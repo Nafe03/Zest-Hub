@@ -90,7 +90,7 @@ GetKey.MouseButton1Click:Connect(function()
 end)
  
 local function validateKey(key)
-    return key == "lnj4WmC71HW09zpgu910OiGyW1HdD2KT" -- Replace this with your key
+    return key == "Key" -- Replace this with your key
 end
  
 CheckKey.MouseButton1Click:Connect(function()
@@ -102,7 +102,7 @@ CheckKey.MouseButton1Click:Connect(function()
         ScreenGui:Destroy()
  
 -- Put Your Script Here
-loadstring(game:HttpGet('https://pastebin.com/mn8csMFV'))()
+loadstring(game:HttpGet('https://pastebin.com/raw/mn8csMFV'))()
  
     else
         TextBox.PlaceholderText = "Invalid key. Try again."
