@@ -467,7 +467,7 @@ function UILibrary.new(options)
                             titleText.Size = UDim2.new(1, -80, 1, 0)
                             titleText.Font = Enum.Font.SourceSansBold
                             titleText.Text = "Color Picker - " .. (options.Text or id)
-                            titleText.TextColor3 = options.DefaultColor or Color3.new(1, 1, 1)
+                            titleText.TextColor3 = options.DefaultColor
                             titleText.TextSize = 16
                             titleText.TextXAlignment = Enum.TextXAlignment.Left
                             titleText.ZIndex = 102
