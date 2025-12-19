@@ -253,8 +253,8 @@ function UILibrary.new(options)
         TabHighlight.Parent = TabButton
         TabHighlight.BackgroundColor3 = options.DefaultColor
         TabHighlight.BorderSizePixel = 0
-        TabHighlight.Position = UDim2.new(0, 0, 0, 0)
-        TabHighlight.Size = UDim2.new(0, 3, 1, 0)
+        TabHighlight.Position = UDim2.new(0, -17, 0, 0)
+        TabHighlight.Size = UDim2.new(0, 2, 1, 0)
         TabHighlight.ZIndex = 2
         TabHighlight.Visible = false
         
