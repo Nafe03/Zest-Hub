@@ -616,14 +616,14 @@ function UILibrary.new(options)
                             svButtonStroke.Thickness = 2
                             svButtonStroke.Parent = saturationValueButton
 
-                            local Fill = Instance.new("Frame")
-                            Fill.Name = "Fill"
-                            Fill.Parent = colorPickerFrame
-                            Fill.BackgroundColor3 = Color3.new(166, 128, 160)
-                            Fill.BorderSizePixel = 1
-                            Fill.Position = UDim2.new(0, 0, 0, -8)
-                            Fill.Size = UDim2.new(0, 178, 0, 2)
-                            Fill.ZIndex = 101
+                            local Fill1 = Instance.new("Frame")
+                            Fill1.Name = "Fill"
+                            Fill1.Parent = colorPickerFrame
+                            Fill1.BackgroundColor3 = Color3.new(166, 128, 160)
+                            Fill1.BorderSizePixel = 1
+                            Fill1.Position = UDim2.new(0, 0, 0, -8)
+                            Fill1.Size = UDim2.new(0, 178, 0, 2)
+                            Fill1.ZIndex = 101
 
                             local hueSlider = Instance.new("Frame")
                             hueSlider.Name = "HueSlider"
