@@ -616,7 +616,7 @@ function UILibrary.new(options)
                             svButtonStroke.Thickness = 2
                             svButtonStroke.Parent = saturationValueButton
 
-                            local Fill = Instace.new("Frame")
+                            local Fill = Instance.new("Frame")
                             Fill.Name = "Fill"
                             Fill.Parent = colorPickerFrame
                             Fill.BackgroundColor3 = Color3.new(166, 128, 160)
