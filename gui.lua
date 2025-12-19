@@ -886,7 +886,7 @@ function UILibrary.new(options)
                         SliderFrame.Name = id .. "Slider"
                         SliderFrame.Parent = GroupboxContent
                         SliderFrame.BackgroundTransparency = 1
-                        SliderFrame.Size = UDim2.new(1, 0, 0, 22)
+                        SliderFrame.Size = UDim2.new(1, 0, 0, 30)
                         SliderFrame.LayoutOrder = #self.Elements + 1
 
                         SliderText.Name = "Text"
