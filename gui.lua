@@ -122,6 +122,20 @@ function UILibrary.new(options)
     MainBackGround.Size = options.Size
     MainBackGround.ClipsDescendants = true
     
+    -- Add shadow for depth
+    local Shadow = Instance.new("ImageLabel")
+    Shadow.Name = "Shadow"
+    Shadow.Parent = MainBackGround
+    Shadow.BackgroundTransparency = 1
+    Shadow.Position = UDim2.new(0, -15, 0, -15)
+    Shadow.Size = UDim2.new(1, 30, 1, 30)
+    Shadow.ZIndex = -1
+    Shadow.Image = "rbxasset://textures/ui/GuiImagePlaceholder.png"
+    Shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
+    Shadow.ImageTransparency = 0.5
+    Shadow.ScaleType = Enum.ScaleType.Slice
+    Shadow.SliceCenter = Rect.new(10, 10, 118, 118)
+    
     UICorner.CornerRadius = UDim.new(0, 8)
     UICorner.Parent = MainBackGround
     
@@ -388,8 +402,9 @@ function UILibrary.new(options)
                             ColorIcon.Name = "ColorIcon"
                             ColorIcon.Parent = ToggleFrame
                             ColorIcon.BackgroundColor3 = options.DefaultColor or Window.DefaultColor
-                            ColorIcon.Position = UDim2.new(1, -20, 0.5, -8)
-                            ColorIcon.Size = UDim2.new(0, 16, 0, 16)
+                            ColorIcon.AnchorPoint = Vector2.new(1, 0.5)
+                            ColorIcon.Position = UDim2.new(1, 0, 0.5, 0)
+                            ColorIcon.Size = UDim2.new(0, 18, 0, 18)
                             ColorIcon.Text = ""
                             ColorIcon.AutoButtonColor = false
                             ColorIcon.ZIndex = 2
@@ -407,9 +422,11 @@ function UILibrary.new(options)
                             -- Hover effect
                             ColorIcon.MouseEnter:Connect(function()
                                 smoothTween(colorStroke, {Thickness = 2})
+                                smoothTween(ColorIcon, {Size = UDim2.new(0, 20, 0, 20)}, 0.15)
                             end)
                             ColorIcon.MouseLeave:Connect(function()
                                 smoothTween(colorStroke, {Thickness = 1.5})
+                                smoothTween(ColorIcon, {Size = UDim2.new(0, 18, 0, 18)}, 0.15)
                             end)
                         end
                     
@@ -422,7 +439,7 @@ function UILibrary.new(options)
                         ToggleButton.Name = "Button"
                         ToggleButton.Parent = ToggleFrame
                         ToggleButton.BackgroundTransparency = 1
-                        ToggleButton.Size = UDim2.new(1, options.HasColorPicker and -26 or 0, 1, 0)
+                        ToggleButton.Size = UDim2.new(1, options.HasColorPicker and -28 or 0, 1, 0)
                         ToggleButton.Text = ""
                         ToggleButton.AutoButtonColor = false
                     
@@ -455,12 +472,13 @@ function UILibrary.new(options)
                         ToggleText.Parent = ToggleFrame
                         ToggleText.BackgroundTransparency = 1
                         ToggleText.Position = UDim2.new(0, 24, 0, 0)
-                        ToggleText.Size = UDim2.new(1, -24, 1, 0)
+                        ToggleText.Size = UDim2.new(1, options.HasColorPicker and -52 or -24, 1, 0)
                         ToggleText.Font = Enum.Font.Gotham
                         ToggleText.Text = options.Text or id
                         ToggleText.TextColor3 = options.TextColor
                         ToggleText.TextSize = 12
                         ToggleText.TextXAlignment = Enum.TextXAlignment.Left
+                        ToggleText.TextTruncate = Enum.TextTruncate.AtEnd
                     
                         local toggled = options.Default or false
                     
@@ -513,20 +531,32 @@ function UILibrary.new(options)
                             local colorPickerWindow = Instance.new("Frame")
                             colorPickerWindow.Name = "ColorPickerWindow"
                             colorPickerWindow.Parent = colorPickerScreenGui
-                            colorPickerWindow.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
+                            colorPickerWindow.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
                             colorPickerWindow.BorderSizePixel = 0
                             colorPickerWindow.Position = UDim2.new(0.5, -125, 0.5, -100)
                             colorPickerWindow.Size = UDim2.new(0, 250, 0, 200)
                             colorPickerWindow.Visible = false
                             colorPickerWindow.ZIndex = 100
                             
+                            -- Add drop shadow
+                            local pickerShadow = Instance.new("ImageLabel")
+                            pickerShadow.Name = "Shadow"
+                            pickerShadow.Parent = colorPickerWindow
+                            pickerShadow.BackgroundTransparency = 1
+                            pickerShadow.Position = UDim2.new(0, -20, 0, -20)
+                            pickerShadow.Size = UDim2.new(1, 40, 1, 40)
+                            pickerShadow.ZIndex = 99
+                            pickerShadow.Image = "rbxasset://textures/ui/GuiImagePlaceholder.png"
+                            pickerShadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
+                            pickerShadow.ImageTransparency = 0.3
+                            
                             local windowCorner = Instance.new("UICorner")
                             windowCorner.CornerRadius = UDim.new(0, 10)
                             windowCorner.Parent = colorPickerWindow
                             
                             local windowStroke = Instance.new("UIStroke")
-                            windowStroke.Color = Color3.fromRGB(45, 45, 45)
-                            windowStroke.Thickness = 1
+                            windowStroke.Color = Color3.fromRGB(60, 60, 60)
+                            windowStroke.Thickness = 1.5
                             windowStroke.Parent = colorPickerWindow
                             
                             -- Content frame for color picker
@@ -872,16 +902,16 @@ function UILibrary.new(options)
 
                         SliderBackground.Name = "Background"
                         SliderBackground.Parent = SliderFrame
-                        SliderBackground.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+                        SliderBackground.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
                         SliderBackground.BorderSizePixel = 0
                         SliderBackground.Position = UDim2.new(0, 0, 0, 24)
-                        SliderBackground.Size = UDim2.new(1, -35, 0, 16)
+                        SliderBackground.Size = UDim2.new(1, -35, 0, 18)
 
-                        SliderBackgroundCorner.CornerRadius = UDim.new(0, 4)
+                        SliderBackgroundCorner.CornerRadius = UDim.new(1, 0)
                         SliderBackgroundCorner.Parent = SliderBackground
                         
                         local SliderStroke = Instance.new("UIStroke")
-                        SliderStroke.Color = Color3.fromRGB(55, 55, 55)
+                        SliderStroke.Color = Color3.fromRGB(50, 50, 50)
                         SliderStroke.Thickness = 1
                         SliderStroke.Parent = SliderBackground
 
@@ -891,7 +921,7 @@ function UILibrary.new(options)
                         SliderFill.BorderSizePixel = 0
                         SliderFill.Size = UDim2.new(0, 0, 1, 0)
 
-                        SliderFillCorner.CornerRadius = UDim.new(0, 4)
+                        SliderFillCorner.CornerRadius = UDim.new(1, 0)
                         SliderFillCorner.Parent = SliderFill
 
                         SliderButton.Name = "Button"
