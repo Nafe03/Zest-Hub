@@ -122,20 +122,6 @@ function UILibrary.new(options)
     MainBackGround.Size = options.Size
     MainBackGround.ClipsDescendants = true
     
-    -- Add shadow for depth
-    local Shadow = Instance.new("ImageLabel")
-    Shadow.Name = "Shadow"
-    Shadow.Parent = MainBackGround
-    Shadow.BackgroundTransparency = 1
-    Shadow.Position = UDim2.new(0, -15, 0, -15)
-    Shadow.Size = UDim2.new(1, 30, 1, 30)
-    Shadow.ZIndex = -1
-    Shadow.Image = "rbxasset://textures/ui/GuiImagePlaceholder.png"
-    Shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
-    Shadow.ImageTransparency = 0.5
-    Shadow.ScaleType = Enum.ScaleType.Slice
-    Shadow.SliceCenter = Rect.new(10, 10, 118, 118)
-    
     UICorner.CornerRadius = UDim.new(0, 8)
     UICorner.Parent = MainBackGround
     
@@ -538,18 +524,6 @@ function UILibrary.new(options)
                             colorPickerWindow.Visible = false
                             colorPickerWindow.ZIndex = 100
                             
-                            -- Add drop shadow
-                            local pickerShadow = Instance.new("ImageLabel")
-                            pickerShadow.Name = "Shadow"
-                            pickerShadow.Parent = colorPickerWindow
-                            pickerShadow.BackgroundTransparency = 1
-                            pickerShadow.Position = UDim2.new(0, -20, 0, -20)
-                            pickerShadow.Size = UDim2.new(1, 40, 1, 40)
-                            pickerShadow.ZIndex = 99
-                            pickerShadow.Image = "rbxasset://textures/ui/GuiImagePlaceholder.png"
-                            pickerShadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
-                            pickerShadow.ImageTransparency = 0.3
-                            
                             local windowCorner = Instance.new("UICorner")
                             windowCorner.CornerRadius = UDim.new(0, 10)
                             windowCorner.Parent = colorPickerWindow
@@ -641,8 +615,16 @@ function UILibrary.new(options)
                             svButtonStroke.Color = Color3.fromRGB(255, 255, 255)
                             svButtonStroke.Thickness = 2
                             svButtonStroke.Parent = saturationValueButton
-                            
-                            -- Hue slider
+
+                            local Fill = Instace.new("Frame")
+                            Fill.Name = "Fill"
+                            Fill.Parent = colorPickerFrame
+                            Fill.BackgroundColor3 = Color3.new(166, 128, 160)
+                            Fill.BorderSizePixel = 1
+                            Fill.Position = UDim2.new(0, 0, 0, -8)
+                            Fill.Size = UDim2.new(0, 178, 0, 2)
+                            Fill.ZIndex = 101
+
                             local hueSlider = Instance.new("Frame")
                             hueSlider.Name = "HueSlider"
                             hueSlider.Parent = colorPickerFrame
