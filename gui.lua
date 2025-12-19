@@ -905,7 +905,7 @@ function UILibrary.new(options)
                         SliderBackground.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
                         SliderBackground.BorderSizePixel = 0
                         SliderBackground.Position = UDim2.new(0, 0, 0, 24)
-                        SliderBackground.Size = UDim2.new(1, -35, 0, 18)
+                        SliderBackground.Size = UDim2.new(1, -35, 0, 8)
 
                         SliderBackgroundCorner.CornerRadius = UDim.new(1, 0)
                         SliderBackgroundCorner.Parent = SliderBackground
