@@ -185,77 +185,72 @@ VFXRegistry.Effects = {
     },
 
     ["Wings"] = {
-        Name = "Wings",
-        Description = "Wings effect",
-        Author = "ZestHub",
-        Version = "1.0",
-        Apply = function(root)
-            local createdInstances = {}
-            local attach = Instance.new("Attachment")
-		attach.Name = "Attachment"
-		attach.CFrame = CFrame.new(0.000000, 0.750000, 0.500000, 1.000000, 0.000000, 0.000000, 0.000000, 1.000000, 0.000000, 0.000000, 0.000000, 1.000000)
-		attach.Parent = root
+    Name = "Wings",
+    Description = "Angel wings beam effect",
+    Author = "ZestHub",
+    Version = "1.0",
+    Apply = function(root)
+        local createdInstances = {}
 
-		-- Beam: Beam
-		local beam = Instance.new("Beam")
-		beam.Name = "Beam"
-		beam.Texture = "rbxassetid://9544400688"
-		beam.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0.000000, Color3.new(1.000000, 1.000000, 1.000000)),
-		ColorSequenceKeypoint.new(1.000000, Color3.new(1.000000, 1.000000, 1.000000))
-	})
-		beam.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0.000000, 0.000000, 0.000000),
-		NumberSequenceKeypoint.new(1.000000, 0.000000, 0.000000)
-	})
-		beam.Width0 = 4.000000
-		beam.Width1 = 6.000000
-		beam.CurveSize0 = 2.000000
-		beam.CurveSize1 = 2.000000
-		beam.LightEmission = 1.000000
-		beam.LightInfluence = 1.000000
-		beam.Segments = 10.000000
-		beam.TextureMode = Enum.TextureMode.Stretch
-		beam.TextureLength = 1.000000
-		beam.TextureSpeed = 0.000000
-		beam.ZOffset = 0.000000
-		beam.Enabled = true
-		beam.Brightness = 1.000000
-		-- beam.Attachment0 = Workspace.Folder.Model.Pack8.POF:RE AURA ANGEL.Torso.Attachment
-		-- beam.Attachment1 = Workspace.Folder.Model.Pack8.POF:RE AURA ANGEL.Torso.Attachment
-		beam.Parent = attach
+        -- Main attachment on torso/back
+        local mainAttach = Instance.new("Attachment")
+        mainAttach.Name = "WingsMainAttach"
+        mainAttach.CFrame = CFrame.new(0, 0.75, 0.5)  -- Slightly behind and above torso
+        mainAttach.Parent = root
 
-		-- Beam: Beam
-		local beam = Instance.new("Beam")
-		beam.Name = "Beam"
-		beam.Texture = "rbxassetid://9544400688"
-		beam.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0.000000, Color3.new(1.000000, 1.000000, 1.000000)),
-		ColorSequenceKeypoint.new(1.000000, Color3.new(1.000000, 1.000000, 1.000000))
-	})
-		beam.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0.000000, 0.000000, 0.000000),
-		NumberSequenceKeypoint.new(1.000000, 0.000000, 0.000000)
-	})
-		beam.Width0 = 4.000000
-		beam.Width1 = 6.000000
-		beam.CurveSize0 = -2.000000
-		beam.CurveSize1 = -2.000000
-		beam.LightEmission = 1.000000
-		beam.LightInfluence = 1.000000
-		beam.Segments = 10.000000
-		beam.TextureMode = Enum.TextureMode.Stretch
-		beam.TextureLength = 1.000000
-		beam.TextureSpeed = 0.000000
-		beam.ZOffset = 0.000000
-		beam.Enabled = true
-		beam.Brightness = 1.000000
-		-- beam.Attachment0 = Workspace.Folder.Model.Pack8.POF:RE AURA ANGEL.Torso.Attachment
-		-- beam.Attachment1 = Workspace.Folder.Model.Pack8.POF:RE AURA ANGEL.Torso.Attachment
-		beam.Parent = attach
-        table.insert(createdInstances, attach)
-       return createdInstances
-     end
+        -- Left wing attachment
+        local leftAttach = Instance.new("Attachment")
+        leftAttach.Name = "LeftWingAttach"
+        leftAttach.CFrame = CFrame.new(-2, 1, 0.5)  -- Left side
+        leftAttach.Parent = root
+
+        -- Right wing attachment
+        local rightAttach = Instance.new("Attachment")
+        rightAttach.Name = "RightWingAttach"
+        rightAttach.CFrame = CFrame.new(2, 1, 0.5)  -- Right side
+        rightAttach.Parent = root
+
+        -- Left Wing Beam
+        local leftBeam = Instance.new("Beam")
+        leftBeam.Name = "LeftWing"
+        leftBeam.Texture = "rbxassetid://9544400688"
+        leftBeam.Color = ColorSequence.new(Color3.new(1, 1, 1))
+        leftBeam.Transparency = NumberSequence.new(0)
+        leftBeam.Width0 = 4
+        leftBeam.Width1 = 6
+        leftBeam.CurveSize0 = 2
+        leftBeam.CurveSize1 = 2
+        leftBeam.LightEmission = 1
+        leftBeam.LightInfluence = 1
+        leftBeam.Attachment0 = mainAttach
+        leftBeam.Attachment1 = leftAttach
+        leftBeam.Parent = root
+
+        -- Right Wing Beam
+        local rightBeam = Instance.new("Beam")
+        rightBeam.Name = "RightWing"
+        rightBeam.Texture = "rbxassetid://9544400688"
+        rightBeam.Color = ColorSequence.new(Color3.new(1, 1, 1))
+        rightBeam.Transparency = NumberSequence.new(0)
+        rightBeam.Width0 = 4
+        rightBeam.Width1 = 6
+        rightBeam.CurveSize0 = -2
+        rightBeam.CurveSize1 = -2
+        rightBeam.LightEmission = 1
+        rightBeam.LightInfluence = 1
+        rightBeam.Attachment0 = mainAttach
+        rightBeam.Attachment1 = rightAttach
+        rightBeam.Parent = root
+
+        -- Track all created instances
+        table.insert(createdInstances, mainAttach)
+        table.insert(createdInstances, leftAttach)
+        table.insert(createdInstances, rightAttach)
+        table.insert(createdInstances, leftBeam)
+        table.insert(createdInstances, rightBeam)
+
+        return createdInstances
+    end
 },
             
     
@@ -268,7 +263,12 @@ VFXRegistry.Effects = {
 
 function VFXRegistry:GetEffectNames()
     local names = {"None"}
+    local effectNames = {}
     for name, _ in pairs(self.Effects) do
+        table.insert(effectNames, name)
+    end
+    table.sort(effectNames)  -- Alphabetical order
+    for _, name in ipairs(effectNames) do
         table.insert(names, name)
     end
     return names
