@@ -193,7 +193,6 @@ VFXRegistry.Effects = {
             local createdInstances = {}
 
             	-- Attachment: 1 (Path: Workspace → Model → Pack4 → POF:RE AURA MUTANTS RAGE → Torso → BEAM OF POWER → 1)
-            	do
             		local attach = Instance.new("Attachment")
             		attach.Name = "1"
             		attach.CFrame = CFrame.new(-0.004150, 4.122253, 0.185486, 1.000000, 0.000000, 0.000000, 0.000000, -1.000000, 0.000000, 0.000000, 0.000000, -1.000000)
@@ -293,7 +292,7 @@ VFXRegistry.Effects = {
             table.insert(createdInstances, attach)
 
             	-- Attachment: T2 (Path: Workspace → Model → Pack4 → POF:RE AURA MUTANTS RAGE → Torso → BEAM OF POWER → T2)
-            	do
+            	
             		local attach = Instance.new("Attachment")
             		attach.Name = "T2"
             		attach.CFrame = CFrame.new(0.004150, -17.245850, 0.000000, 0.000000, 1.000000, -0.000000, -1.000000, 0.000000, 0.000000, 0.000000, 0.000000, 1.000000)
@@ -425,7 +424,7 @@ VFXRegistry.Effects = {
             table.insert(createdInstances, attach)
 
             	-- Attachment: 2 (Path: Workspace → Model → Pack4 → POF:RE AURA MUTANTS RAGE → Torso → BEAM OF POWER → 2)
-            	do
+            	
             		local attach = Instance.new("Attachment")
             		attach.Name = "2"
             		attach.CFrame = CFrame.new(0.000000, -1.373575, 0.000000, 1.000000, 0.000000, 0.000000, 0.000000, 1.000000, 0.000000, 0.000000, 0.000000, 1.000000)
@@ -556,7 +555,6 @@ VFXRegistry.Effects = {
             table.insert(createdInstances, attach)
 
             	-- Attachment: B (Path: Workspace → Model → Pack4 → POF:RE AURA MUTANTS RAGE → Torso → B)
-            	do
             		local attach = Instance.new("Attachment")
             		attach.Name = "B"
             		attach.CFrame = CFrame.new(-0.003998, -2.878001, 0.185120, 1.000000, 0.000000, 0.000000, 0.000000, 1.000000, 0.000000, 0.000000, 0.000000, 1.000000)
@@ -654,7 +652,7 @@ VFXRegistry.Effects = {
             table.insert(createdInstances, attach)
 
             	-- Attachment: B (Path: Workspace → Model → Pack4 → POF:RE AURA MUTANTS RAGE → Torso → BEAM OF POWER → B)
-            	do
+            	
             		local attach = Instance.new("Attachment")
             		attach.Name = "B"
             		attach.CFrame = CFrame.new(0.004150, 6.004150, 0.000000, 0.000000, 1.000000, -0.000000, -1.000000, 0.000000, 0.000000, 0.000000, 0.000000, 1.000000)
@@ -834,7 +832,7 @@ VFXRegistry.Effects = {
         Version = "1.0",
         Apply = function(root)
             local createdInstances = {}
-            	do
+            	
             		local attach = Instance.new("Attachment")
             		attach.Name = "Attachment"
             		attach.CFrame = CFrame.new(0.000000, 0.250006, 1.000000, 1.000000, 0.000000, -0.000000, 0.000000, 0.000000, 1.000000, 0.000000, -1.000000, 0.000000)
