@@ -183,6 +183,81 @@ VFXRegistry.Effects = {
             return createdInstances
         end
     },
+
+    ["Wings"] = {
+        Name = "Wings",
+        Description = "Wings effect",
+        Author = "ZestHub",
+        Version = "1.0",
+        Apply = function(root)
+            local createdInstances = {}
+            local attach = Instance.new("Attachment")
+		attach.Name = "Attachment"
+		attach.CFrame = CFrame.new(0.000000, 0.750000, 0.500000, 1.000000, 0.000000, 0.000000, 0.000000, 1.000000, 0.000000, 0.000000, 0.000000, 1.000000)
+		attach.Parent = root
+
+		-- Beam: Beam
+		local beam = Instance.new("Beam")
+		beam.Name = "Beam"
+		beam.Texture = "rbxassetid://9544400688"
+		beam.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0.000000, Color3.new(1.000000, 1.000000, 1.000000)),
+		ColorSequenceKeypoint.new(1.000000, Color3.new(1.000000, 1.000000, 1.000000))
+	})
+		beam.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0.000000, 0.000000, 0.000000),
+		NumberSequenceKeypoint.new(1.000000, 0.000000, 0.000000)
+	})
+		beam.Width0 = 4.000000
+		beam.Width1 = 6.000000
+		beam.CurveSize0 = 2.000000
+		beam.CurveSize1 = 2.000000
+		beam.LightEmission = 1.000000
+		beam.LightInfluence = 1.000000
+		beam.Segments = 10.000000
+		beam.TextureMode = Enum.TextureMode.Stretch
+		beam.TextureLength = 1.000000
+		beam.TextureSpeed = 0.000000
+		beam.ZOffset = 0.000000
+		beam.Enabled = true
+		beam.Brightness = 1.000000
+		-- beam.Attachment0 = Workspace.Folder.Model.Pack8.POF:RE AURA ANGEL.Torso.Attachment
+		-- beam.Attachment1 = Workspace.Folder.Model.Pack8.POF:RE AURA ANGEL.Torso.Attachment
+		beam.Parent = attach
+
+		-- Beam: Beam
+		local beam = Instance.new("Beam")
+		beam.Name = "Beam"
+		beam.Texture = "rbxassetid://9544400688"
+		beam.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0.000000, Color3.new(1.000000, 1.000000, 1.000000)),
+		ColorSequenceKeypoint.new(1.000000, Color3.new(1.000000, 1.000000, 1.000000))
+	})
+		beam.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0.000000, 0.000000, 0.000000),
+		NumberSequenceKeypoint.new(1.000000, 0.000000, 0.000000)
+	})
+		beam.Width0 = 4.000000
+		beam.Width1 = 6.000000
+		beam.CurveSize0 = -2.000000
+		beam.CurveSize1 = -2.000000
+		beam.LightEmission = 1.000000
+		beam.LightInfluence = 1.000000
+		beam.Segments = 10.000000
+		beam.TextureMode = Enum.TextureMode.Stretch
+		beam.TextureLength = 1.000000
+		beam.TextureSpeed = 0.000000
+		beam.ZOffset = 0.000000
+		beam.Enabled = true
+		beam.Brightness = 1.000000
+		-- beam.Attachment0 = Workspace.Folder.Model.Pack8.POF:RE AURA ANGEL.Torso.Attachment
+		-- beam.Attachment1 = Workspace.Folder.Model.Pack8.POF:RE AURA ANGEL.Torso.Attachment
+		beam.Parent = attach
+        table.insert(createdInstances, attach)
+       return createdInstances
+     end
+},
+            
     
     -- Add more VFX here easily!
 }
