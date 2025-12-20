@@ -172,6 +172,7 @@ VFXRegistry.Effects = {
             emitter1.Rate = 1.5
             emitter1.Speed = NumberRange.new(0.001)
             emitter1.EmissionDirection = Enum.NormalId.Top
+            emitter1.Orientation = Enum.ParticleOrientation.VelocityPerpendicular
             emitter1.LightEmission = 1
             emitter1.LightInfluence = 0
             emitter1.Brightness = 5
