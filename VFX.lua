@@ -22,7 +22,7 @@ VFXRegistry.Effects = {
             -- Attachment: Main
             local attach = Instance.new("Attachment")
             attach.Name = "PurpleFloorVFX"
-            attach.CFrame = CFrame.new(0, -2, 0)
+            attach.CFrame = CFrame.new(0, -2.8, 0)
             attach.Parent = root
 
             -- ParticleEmitter: Floor1
@@ -147,7 +147,7 @@ VFXRegistry.Effects = {
             
             local attach = Instance.new("Attachment")
             attach.Name = "BlueFloorVFX"
-            attach.CFrame = CFrame.new(0, -2, 0)
+            attach.CFrame = CFrame.new(0, -2.8, 0)
             attach.Parent = root
 
             local emitter1 = Instance.new("ParticleEmitter")
