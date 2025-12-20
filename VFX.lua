@@ -254,8 +254,60 @@ VFXRegistry.Effects = {
         return createdInstances
     end
 },
-            
-    
+
+    ["Aura"] = {
+    Name = "Aura",
+    Description = "Nice Aura",
+    Author = "ZestHub",
+    Version = "1.0",
+    Apply = function(root)
+        local createdInstances = {}
+            local attach = Instance.new("Attachment")
+		attach.Name = "TorsoAttach"
+		attach.CFrame = CFrame.new(0.000000, 0.000000, 0.699829, 1.000000, 0.000000, -0.000000, 0.000000, 0.000000, 1.000000, 0.000000, -1.000000, 0.000000)
+		attach.Parent = root
+
+		-- ParticleEmitter: Shine
+		local emitter = Instance.new("ParticleEmitter")
+		emitter.Name = "Shine"
+		emitter.Texture = "rbxassetid://2512988643"
+		emitter.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0.000000, Color3.new(0.619608, 0.000000, 0.000000)),
+		ColorSequenceKeypoint.new(1.000000, Color3.new(0.619608, 0.000000, 0.000000))
+	})
+		emitter.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0.000000, 0.000000, 0.000000),
+		NumberSequenceKeypoint.new(1.000000, 10.000000, 0.000000)
+	})
+		emitter.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0.000000, 0.825000, 0.000000),
+		NumberSequenceKeypoint.new(1.000000, 1.000000, 0.000000)
+	})
+		emitter.Lifetime = NumberRange.new(0.250000)
+		emitter.Rate = 150.000000
+		emitter.Speed = NumberRange.new(5.000000)
+		emitter.Acceleration = Vector3.new(0.000000, 0.000000, 0.000000)
+		emitter.Drag = 1.000000
+		emitter.VelocityInheritance = 0.000000
+		emitter.EmissionDirection = Enum.NormalId.Top
+		emitter.SpreadAngle = 360, 360
+		emitter.Rotation = NumberRange.new(-1500.000000, 1500.000000)
+		emitter.RotSpeed = NumberRange.new(-15.000000, 15.000000)
+		emitter.Orientation = Enum.ParticleOrientation.FacingCamera
+		emitter.LightEmission = 0.500000
+		emitter.LightInfluence = 1.000000
+		emitter.Brightness = 1.000000
+		emitter.ZOffset = -1.000000
+		emitter.Enabled = true
+		emitter.TimeScale = 1.000000
+		emitter.Parent = attach
+
+	
+        return createdInstances
+
+	    table.insert(createdInstances, attach)
+    end
+},
     -- Add more VFX here easily!
 }
 
