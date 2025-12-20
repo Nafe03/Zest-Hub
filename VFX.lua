@@ -301,11 +301,10 @@ VFXRegistry.Effects = {
 		emitter.Enabled = true
 		emitter.TimeScale = 1.000000
 		emitter.Parent = attach
-
-	
-        return createdInstances
-
+			
 	    table.insert(createdInstances, attach)
+			
+		return createdInstances
     end
 },
     -- Add more VFX here easily!
