@@ -184,6 +184,579 @@ VFXRegistry.Effects = {
         end
     },
 
+    ["Quake"] = {
+        Name = "Quake",
+        Description = "Quake",
+        Author = "ZestHub",
+        Version = "1.0",
+        Apply = function(root)
+            local createdInstances = {}
+
+            	-- Attachment: 1 (Path: Workspace → Model → Pack4 → POF:RE AURA MUTANTS RAGE → Torso → BEAM OF POWER → 1)
+            	do
+            		local attach = Instance.new("Attachment")
+            		attach.Name = "1"
+            		attach.CFrame = CFrame.new(-0.004150, 4.122253, 0.185486, 1.000000, 0.000000, 0.000000, 0.000000, -1.000000, 0.000000, 0.000000, 0.000000, -1.000000)
+            		attach.Axis = Vector3.new(1.000000, 0.000000, 0.000000)
+            		attach.SecondaryAxis = Vector3.new(0.000000, -1.000000, 0.000000)
+            		attach.Parent = root
+            		-- ParticleEmitter: Explosions 2
+            		local emitter = Instance.new("ParticleEmitter")
+            		emitter.Name = "Explosions 2"
+            		-- Core
+            		emitter.Texture = "rbxassetid://8214516794"
+            		emitter.Color = ColorSequence.new({
+            		ColorSequenceKeypoint.new(0.000000, Color3.new(0.431373, 1.000000, 0.878431)),
+            		ColorSequenceKeypoint.new(1.000000, Color3.new(0.431373, 1.000000, 0.878431))
+            	})
+            		emitter.Size = NumberSequence.new({
+            		NumberSequenceKeypoint.new(0.000000, 0.000000, 0.000000),
+            		NumberSequenceKeypoint.new(1.000000, 11.000000, 0.000000)
+            	})
+            		emitter.Transparency = NumberSequence.new({
+            		NumberSequenceKeypoint.new(0.000000, 1.000000, 0.000000),
+            		NumberSequenceKeypoint.new(0.499180, 0.750000, 0.000000),
+            		NumberSequenceKeypoint.new(1.000000, 1.000000, 0.000000)
+            	})
+            		emitter.Lifetime = NumberRange.new(0.500000)
+            		emitter.Rate = 6.250000
+            		-- Rotation
+            		emitter.Rotation = NumberRange.new(-100.000000, -80.000000)
+            		emitter.RotSpeed = NumberRange.new(0.000000)
+            		emitter.Orientation = Enum.ParticleOrientation.VelocityParallel
+            		-- Flipbook
+            		emitter.FlipbookLayout = Enum.ParticleFlipbookLayout.None
+            		emitter.FlipbookFramerate = NumberRange.new(1.000000)
+            		-- Behavior
+            		emitter.LockedToPart = true
+            		-- Visual
+            		emitter.LightEmission = 1.000000
+            		emitter.ZOffset = -0.500000
+            		-- Shape
+            		emitter.Shape = Enum.ParticleEmitterShape.Box
+            		emitter.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+            		emitter.ShapeInOut = Enum.ParticleEmitterShapeInOut.Outward
+            		emitter.ShapePartial = 1.000000
+            		-- Motion
+            		emitter.Speed = NumberRange.new(8.000000)
+            		emitter.Acceleration = Vector3.new(0.000000, 15.000000, 0.000000)
+            		emitter.Drag = 5.000000
+            		emitter.SpreadAngle = Vector2.new(360.000000, 360.000000)
+            		emitter.VelocitySpread = 360.000000
+            		emitter.Parent = attach
+            		-- ParticleEmitter: Explosions 1
+            		local emitter = Instance.new("ParticleEmitter")
+            		emitter.Name = "Explosions 1"
+            		-- Core
+            		emitter.Texture = "rbxassetid://8214516794"
+            		emitter.Color = ColorSequence.new({
+            		ColorSequenceKeypoint.new(0.000000, Color3.new(0.266667, 0.619608, 0.513726)),
+            		ColorSequenceKeypoint.new(1.000000, Color3.new(0.266667, 0.619608, 0.513726))
+            	})
+            		emitter.Size = NumberSequence.new({
+            		NumberSequenceKeypoint.new(0.000000, 0.000000, 0.000000),
+            		NumberSequenceKeypoint.new(1.000000, 11.000000, 0.000000)
+            	})
+            		emitter.Transparency = NumberSequence.new({
+            		NumberSequenceKeypoint.new(0.000000, 1.000000, 0.000000),
+            		NumberSequenceKeypoint.new(0.499180, 0.750000, 0.000000),
+            		NumberSequenceKeypoint.new(1.000000, 1.000000, 0.000000)
+            	})
+            		emitter.Lifetime = NumberRange.new(0.500000)
+            		emitter.Rate = 6.250000
+            		-- Rotation
+            		emitter.Rotation = NumberRange.new(-100.000000, -80.000000)
+            		emitter.RotSpeed = NumberRange.new(0.000000)
+            		emitter.Orientation = Enum.ParticleOrientation.VelocityParallel
+            		-- Flipbook
+            		emitter.FlipbookLayout = Enum.ParticleFlipbookLayout.None
+            		emitter.FlipbookFramerate = NumberRange.new(1.000000)
+            		-- Behavior
+            		emitter.LockedToPart = true
+            		-- Visual
+            		emitter.LightEmission = 1.000000
+            		emitter.ZOffset = -0.500000
+            		-- Shape
+            		emitter.Shape = Enum.ParticleEmitterShape.Box
+            		emitter.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+            		emitter.ShapeInOut = Enum.ParticleEmitterShapeInOut.Outward
+            		emitter.ShapePartial = 1.000000
+            		-- Motion
+            		emitter.Speed = NumberRange.new(8.000000)
+            		emitter.Acceleration = Vector3.new(0.000000, 15.000000, 0.000000)
+            		emitter.Drag = 5.000000
+            		emitter.SpreadAngle = Vector2.new(360.000000, 360.000000)
+            		emitter.VelocitySpread = 360.000000
+            		emitter.Parent = attach
+            	end
+
+            table.insert(createdInstances, attach)
+
+            	-- Attachment: T2 (Path: Workspace → Model → Pack4 → POF:RE AURA MUTANTS RAGE → Torso → BEAM OF POWER → T2)
+            	do
+            		local attach = Instance.new("Attachment")
+            		attach.Name = "T2"
+            		attach.CFrame = CFrame.new(0.004150, -17.245850, 0.000000, 0.000000, 1.000000, -0.000000, -1.000000, 0.000000, 0.000000, 0.000000, 0.000000, 1.000000)
+            		attach.Axis = Vector3.new(0.000000, -1.000000, 0.000000)
+            		attach.SecondaryAxis = Vector3.new(1.000000, 0.000000, 0.000000)
+            		attach.Parent = root
+            		-- Beam: Beam 2
+            		local beam = Instance.new("Beam")
+            		beam.Name = "Beam 2"
+            		beam.Texture = "rbxassetid://12414458390"
+            		beam.Color = ColorSequence.new({
+            		ColorSequenceKeypoint.new(0.000000, Color3.new(0.431373, 1.000000, 0.878431)),
+            		ColorSequenceKeypoint.new(1.000000, Color3.new(0.431373, 1.000000, 0.878431))
+            	})
+            		beam.Transparency = NumberSequence.new({
+            		NumberSequenceKeypoint.new(0.000000, 1.000000, 0.000000),
+            		NumberSequenceKeypoint.new(0.900000, 0.350000, 0.000000),
+            		NumberSequenceKeypoint.new(1.000000, 1.000000, 0.000000)
+            	})
+            		beam.Width0 = 11.000000
+            		beam.Width1 = 11.000000
+            		beam.CurveSize0 = 0.000000
+            		beam.CurveSize1 = 0.000000
+            		beam.LightEmission = 1.000000
+            		beam.LightInfluence = 1.000000
+            		beam.Segments = 10.000000
+            		beam.TextureMode = Enum.TextureMode.Stretch
+            		beam.TextureLength = 0.350000
+            		beam.TextureSpeed = -1.000000
+            		beam.ZOffset = 1.000000
+            		beam.Enabled = true
+            		beam.FaceCamera = true
+            		beam.Brightness = 1.000000
+            		-- beam.Attachment0 = Workspace.Folder.Model.Pack4.POF:RE AURA MUTANTS RAGE.Torso.BEAM OF POWER.T2
+            		-- beam.Attachment1 = Workspace.Folder.Model.Pack4.POF:RE AURA MUTANTS RAGE.Torso.BEAM OF POWER.B
+            		beam.Parent = attach
+            		-- Beam: Beam 4
+            		local beam = Instance.new("Beam")
+            		beam.Name = "Beam 4"
+            		beam.Texture = "rbxassetid://13712010201"
+            		beam.Color = ColorSequence.new({
+            		ColorSequenceKeypoint.new(0.000000, Color3.new(0.266667, 0.619608, 0.513726)),
+            		ColorSequenceKeypoint.new(1.000000, Color3.new(0.266667, 0.619608, 0.513726))
+            	})
+            		beam.Transparency = NumberSequence.new({
+            		NumberSequenceKeypoint.new(0.000000, 1.000000, 0.000000),
+            		NumberSequenceKeypoint.new(0.900000, 0.750000, 0.000000),
+            		NumberSequenceKeypoint.new(1.000000, 1.000000, 0.000000)
+            	})
+            		beam.Width0 = 10.000000
+            		beam.Width1 = 10.000000
+            		beam.CurveSize0 = 0.000000
+            		beam.CurveSize1 = 0.000000
+            		beam.LightEmission = 1.000000
+            		beam.LightInfluence = 1.000000
+            		beam.Segments = 10.000000
+            		beam.TextureMode = Enum.TextureMode.Stretch
+            		beam.TextureLength = 0.750000
+            		beam.TextureSpeed = -3.000000
+            		beam.ZOffset = 1.000000
+            		beam.Enabled = true
+            		beam.FaceCamera = true
+            		beam.Brightness = 1.000000
+            		-- beam.Attachment0 = Workspace.Folder.Model.Pack4.POF:RE AURA MUTANTS RAGE.Torso.BEAM OF POWER.T2
+            		-- beam.Attachment1 = Workspace.Folder.Model.Pack4.POF:RE AURA MUTANTS RAGE.Torso.BEAM OF POWER.B
+            		beam.Parent = attach
+            		-- Beam: Beam 3
+            		local beam = Instance.new("Beam")
+            		beam.Name = "Beam 3"
+            		beam.Texture = "rbxassetid://13370272316"
+            		beam.Color = ColorSequence.new({
+            		ColorSequenceKeypoint.new(0.000000, Color3.new(0.266667, 0.619608, 0.513726)),
+            		ColorSequenceKeypoint.new(1.000000, Color3.new(0.266667, 0.619608, 0.513726))
+            	})
+            		beam.Transparency = NumberSequence.new({
+            		NumberSequenceKeypoint.new(0.000000, 1.000000, 0.000000),
+            		NumberSequenceKeypoint.new(0.900000, 0.350000, 0.000000),
+            		NumberSequenceKeypoint.new(1.000000, 1.000000, 0.000000)
+            	})
+            		beam.Width0 = 8.000000
+            		beam.Width1 = 8.000000
+            		beam.CurveSize0 = 0.000000
+            		beam.CurveSize1 = 0.000000
+            		beam.LightEmission = 1.000000
+            		beam.LightInfluence = 1.000000
+            		beam.Segments = 10.000000
+            		beam.TextureMode = Enum.TextureMode.Stretch
+            		beam.TextureLength = 0.250000
+            		beam.TextureSpeed = -1.000000
+            		beam.ZOffset = -1.000000
+            		beam.Enabled = true
+            		beam.FaceCamera = true
+            		beam.Brightness = 1.000000
+            		-- beam.Attachment0 = Workspace.Folder.Model.Pack4.POF:RE AURA MUTANTS RAGE.Torso.BEAM OF POWER.T2
+            		-- beam.Attachment1 = Workspace.Folder.Model.Pack4.POF:RE AURA MUTANTS RAGE.Torso.BEAM OF POWER.B
+            		beam.Parent = attach
+            		-- Beam: Beam 1
+            		local beam = Instance.new("Beam")
+            		beam.Name = "Beam 1"
+            		beam.Texture = "rbxassetid://13712011229"
+            		beam.Color = ColorSequence.new({
+            		ColorSequenceKeypoint.new(0.000000, Color3.new(0.431373, 1.000000, 0.878431)),
+            		ColorSequenceKeypoint.new(1.000000, Color3.new(0.431373, 1.000000, 0.878431))
+            	})
+            		beam.Transparency = NumberSequence.new({
+            		NumberSequenceKeypoint.new(0.000000, 1.000000, 0.000000),
+            		NumberSequenceKeypoint.new(0.900000, 0.757000, 0.000000),
+            		NumberSequenceKeypoint.new(1.000000, 1.000000, 0.000000)
+            	})
+            		beam.Width0 = 8.500000
+            		beam.Width1 = 8.500000
+            		beam.CurveSize0 = 0.000000
+            		beam.CurveSize1 = 0.000000
+            		beam.LightEmission = 1.000000
+            		beam.LightInfluence = 1.000000
+            		beam.Segments = 10.000000
+            		beam.TextureMode = Enum.TextureMode.Stretch
+            		beam.TextureLength = 0.250000
+            		beam.TextureSpeed = -1.500000
+            		beam.ZOffset = 1.000000
+            		beam.Enabled = true
+            		beam.FaceCamera = true
+            		beam.Brightness = 1.000000
+            		-- beam.Attachment0 = Workspace.Folder.Model.Pack4.POF:RE AURA MUTANTS RAGE.Torso.BEAM OF POWER.T2
+            		-- beam.Attachment1 = Workspace.Folder.Model.Pack4.POF:RE AURA MUTANTS RAGE.Torso.BEAM OF POWER.B
+            		beam.Parent = attach
+            	end
+
+            table.insert(createdInstances, attach)
+
+            	-- Attachment: 2 (Path: Workspace → Model → Pack4 → POF:RE AURA MUTANTS RAGE → Torso → BEAM OF POWER → 2)
+            	do
+            		local attach = Instance.new("Attachment")
+            		attach.Name = "2"
+            		attach.CFrame = CFrame.new(0.000000, -1.373575, 0.000000, 1.000000, 0.000000, 0.000000, 0.000000, 1.000000, 0.000000, 0.000000, 0.000000, 1.000000)
+            		attach.Axis = Vector3.new(1.000000, 0.000000, 0.000000)
+            		attach.SecondaryAxis = Vector3.new(0.000000, 1.000000, 0.000000)
+            		attach.Parent = root
+            		-- ParticleEmitter: Lightning 1
+            		local emitter = Instance.new("ParticleEmitter")
+            		emitter.Name = "Lightning 1"
+            		-- Core
+            		emitter.Texture = "http://www.roblox.com/asset/?id=12072303767"
+            		emitter.Color = ColorSequence.new({
+            		ColorSequenceKeypoint.new(0.000000, Color3.new(0.431373, 1.000000, 0.878431)),
+            		ColorSequenceKeypoint.new(1.000000, Color3.new(0.431373, 1.000000, 0.878431))
+            	})
+            		emitter.Size = NumberSequence.new({
+            		NumberSequenceKeypoint.new(0.000000, 6.000000, 0.000000),
+            		NumberSequenceKeypoint.new(1.000000, 6.000000, 0.000000)
+            	})
+            		emitter.Transparency = NumberSequence.new({
+            		NumberSequenceKeypoint.new(0.000000, 1.000000, 0.000000),
+            		NumberSequenceKeypoint.new(0.050000, 0.000000, 0.000000),
+            		NumberSequenceKeypoint.new(0.100000, 1.000000, 0.000000),
+            		NumberSequenceKeypoint.new(0.150000, 0.000000, 0.000000),
+            		NumberSequenceKeypoint.new(0.200000, 1.000000, 0.000000),
+            		NumberSequenceKeypoint.new(0.250000, 0.000000, 0.000000),
+            		NumberSequenceKeypoint.new(0.300000, 1.000000, 0.000000),
+            		NumberSequenceKeypoint.new(0.350000, 0.000000, 0.000000),
+            		NumberSequenceKeypoint.new(0.400000, 1.000000, 0.000000),
+            		NumberSequenceKeypoint.new(0.450000, 0.000000, 0.000000),
+            		NumberSequenceKeypoint.new(0.501000, 1.000000, 0.000000),
+            		NumberSequenceKeypoint.new(0.550000, 0.000000, 0.000000),
+            		NumberSequenceKeypoint.new(0.600000, 1.000000, 0.000000),
+            		NumberSequenceKeypoint.new(0.650000, 0.000000, 0.000000),
+            		NumberSequenceKeypoint.new(0.700000, 1.000000, 0.000000),
+            		NumberSequenceKeypoint.new(0.750000, 0.000000, 0.000000),
+            		NumberSequenceKeypoint.new(0.800000, 1.000000, 0.000000),
+            		NumberSequenceKeypoint.new(0.850000, 0.000000, 0.000000),
+            		NumberSequenceKeypoint.new(0.900000, 1.000000, 0.000000),
+            		NumberSequenceKeypoint.new(1.000000, 1.000000, 0.000000)
+            	})
+            		emitter.Lifetime = NumberRange.new(0.400000)
+            		emitter.Rate = 5.000000
+            		-- Rotation
+            		emitter.Rotation = NumberRange.new(-360.000000, 360.000000)
+            		emitter.RotSpeed = NumberRange.new(-100.000000, 100.000000)
+            		-- Flipbook
+            		emitter.FlipbookLayout = Enum.ParticleFlipbookLayout.Grid4x4
+            		emitter.FlipbookFramerate = NumberRange.new(25.000000)
+            		-- Behavior
+            		emitter.LockedToPart = true
+            		-- Visual
+            		emitter.LightEmission = 1.000000
+            		emitter.ZOffset = -1.000000
+            		-- Shape
+            		emitter.Shape = Enum.ParticleEmitterShape.Box
+            		emitter.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+            		emitter.ShapeInOut = Enum.ParticleEmitterShapeInOut.Outward
+            		emitter.ShapePartial = 1.000000
+            		-- Motion
+            		emitter.Speed = NumberRange.new(20.000000)
+            		emitter.Acceleration = Vector3.new(0.000000, 15.000000, 0.000000)
+            		emitter.SpreadAngle = Vector2.new(360.000000, 360.000000)
+            		emitter.VelocitySpread = 360.000000
+            		emitter.Parent = attach
+            		-- ParticleEmitter: Lightning 2
+            		local emitter = Instance.new("ParticleEmitter")
+            		emitter.Name = "Lightning 2"
+            		-- Core
+            		emitter.Texture = "http://www.roblox.com/asset/?id=12072303767"
+            		emitter.Color = ColorSequence.new({
+            		ColorSequenceKeypoint.new(0.000000, Color3.new(0.266667, 0.619608, 0.513726)),
+            		ColorSequenceKeypoint.new(1.000000, Color3.new(0.266667, 0.619608, 0.513726))
+            	})
+            		emitter.Size = NumberSequence.new({
+            		NumberSequenceKeypoint.new(0.000000, 6.000000, 0.000000),
+            		NumberSequenceKeypoint.new(1.000000, 6.000000, 0.000000)
+            	})
+            		emitter.Transparency = NumberSequence.new({
+            		NumberSequenceKeypoint.new(0.000000, 1.000000, 0.000000),
+            		NumberSequenceKeypoint.new(0.050000, 0.000000, 0.000000),
+            		NumberSequenceKeypoint.new(0.100000, 1.000000, 0.000000),
+            		NumberSequenceKeypoint.new(0.150000, 0.000000, 0.000000),
+            		NumberSequenceKeypoint.new(0.200000, 1.000000, 0.000000),
+            		NumberSequenceKeypoint.new(0.250000, 0.000000, 0.000000),
+            		NumberSequenceKeypoint.new(0.300000, 1.000000, 0.000000),
+            		NumberSequenceKeypoint.new(0.350000, 0.000000, 0.000000),
+            		NumberSequenceKeypoint.new(0.400000, 1.000000, 0.000000),
+            		NumberSequenceKeypoint.new(0.450000, 0.000000, 0.000000),
+            		NumberSequenceKeypoint.new(0.501000, 1.000000, 0.000000),
+            		NumberSequenceKeypoint.new(0.550000, 0.000000, 0.000000),
+            		NumberSequenceKeypoint.new(0.600000, 1.000000, 0.000000),
+            		NumberSequenceKeypoint.new(0.650000, 0.000000, 0.000000),
+            		NumberSequenceKeypoint.new(0.700000, 1.000000, 0.000000),
+            		NumberSequenceKeypoint.new(0.750000, 0.000000, 0.000000),
+            		NumberSequenceKeypoint.new(0.800000, 1.000000, 0.000000),
+            		NumberSequenceKeypoint.new(0.850000, 0.000000, 0.000000),
+            		NumberSequenceKeypoint.new(0.900000, 1.000000, 0.000000),
+            		NumberSequenceKeypoint.new(1.000000, 1.000000, 0.000000)
+            	})
+            		emitter.Lifetime = NumberRange.new(0.400000)
+            		emitter.Rate = 5.000000
+            		-- Rotation
+            		emitter.Rotation = NumberRange.new(-360.000000, 360.000000)
+            		emitter.RotSpeed = NumberRange.new(-100.000000, 100.000000)
+            		-- Flipbook
+            		emitter.FlipbookLayout = Enum.ParticleFlipbookLayout.Grid4x4
+            		emitter.FlipbookFramerate = NumberRange.new(25.000000)
+            		-- Behavior
+            		emitter.LockedToPart = true
+            		-- Visual
+            		emitter.LightInfluence = 0.000000
+            		emitter.Brightness = 3.000000
+            		emitter.ZOffset = -1.000000
+            		-- Shape
+            		emitter.Shape = Enum.ParticleEmitterShape.Box
+            		emitter.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+            		emitter.ShapeInOut = Enum.ParticleEmitterShapeInOut.Outward
+            		emitter.ShapePartial = 1.000000
+            		-- Motion
+            		emitter.Speed = NumberRange.new(20.000000)
+            		emitter.Acceleration = Vector3.new(0.000000, 15.000000, 0.000000)
+            		emitter.SpreadAngle = Vector2.new(360.000000, 360.000000)
+            		emitter.VelocitySpread = 360.000000
+            		emitter.Parent = attach
+            	end
+
+            table.insert(createdInstances, attach)
+
+            	-- Attachment: B (Path: Workspace → Model → Pack4 → POF:RE AURA MUTANTS RAGE → Torso → B)
+            	do
+            		local attach = Instance.new("Attachment")
+            		attach.Name = "B"
+            		attach.CFrame = CFrame.new(-0.003998, -2.878001, 0.185120, 1.000000, 0.000000, 0.000000, 0.000000, 1.000000, 0.000000, 0.000000, 0.000000, 1.000000)
+            		attach.Axis = Vector3.new(1.000000, 0.000000, 0.000000)
+            		attach.SecondaryAxis = Vector3.new(0.000000, 1.000000, 0.000000)
+            		attach.Parent = root
+            		-- ParticleEmitter: Quake 2
+            		local emitter = Instance.new("ParticleEmitter")
+            		emitter.Name = "Quake 2"
+            		-- Core
+            		emitter.Texture = "rbxassetid://13516765561"
+            		emitter.Color = ColorSequence.new({
+            		ColorSequenceKeypoint.new(0.000000, Color3.new(0.431373, 1.000000, 0.878431)),
+            		ColorSequenceKeypoint.new(1.000000, Color3.new(0.431373, 1.000000, 0.878431))
+            	})
+            		emitter.Size = NumberSequence.new({
+            		NumberSequenceKeypoint.new(0.000000, 10.000000, 0.000000),
+            		NumberSequenceKeypoint.new(1.000000, 10.000000, 0.000000)
+            	})
+            		emitter.Transparency = NumberSequence.new({
+            		NumberSequenceKeypoint.new(0.000000, 1.000000, 0.000000),
+            		NumberSequenceKeypoint.new(0.500000, 0.550000, 0.000000),
+            		NumberSequenceKeypoint.new(1.000000, 1.000000, 0.000000)
+            	})
+            		emitter.Lifetime = NumberRange.new(1.500000)
+            		emitter.Rate = 1.000000
+            		-- Rotation
+            		emitter.Rotation = NumberRange.new(-360.000000, 360.000000)
+            		emitter.RotSpeed = NumberRange.new(0.000000)
+            		emitter.Orientation = Enum.ParticleOrientation.VelocityPerpendicular
+            		-- Flipbook
+            		emitter.FlipbookLayout = Enum.ParticleFlipbookLayout.None
+            		emitter.FlipbookFramerate = NumberRange.new(5.000000)
+            		-- Behavior
+            		emitter.LockedToPart = true
+            		-- Visual
+            		emitter.LightEmission = 1.000000
+            		emitter.ZOffset = 0.250000
+            		-- Shape
+            		emitter.Shape = Enum.ParticleEmitterShape.Box
+            		emitter.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+            		emitter.ShapeInOut = Enum.ParticleEmitterShapeInOut.Outward
+            		emitter.ShapePartial = 1.000000
+            		-- Motion
+            		emitter.Speed = NumberRange.new(0.001000)
+            		emitter.Acceleration = Vector3.new(0.000000, 0.000000, 0.000000)
+            		emitter.SpreadAngle = Vector2.new(0.000000, 0.000000)
+            		emitter.VelocitySpread = 0.000000
+            		emitter.Parent = attach
+            		-- ParticleEmitter: Quake 1
+            		local emitter = Instance.new("ParticleEmitter")
+            		emitter.Name = "Quake 1"
+            		-- Core
+            		emitter.Texture = "rbxassetid://12102242479"
+            		emitter.Color = ColorSequence.new({
+            		ColorSequenceKeypoint.new(0.000000, Color3.new(0.266667, 0.619608, 0.513726)),
+            		ColorSequenceKeypoint.new(1.000000, Color3.new(0.266667, 0.619608, 0.513726))
+            	})
+            		emitter.Size = NumberSequence.new({
+            		NumberSequenceKeypoint.new(0.000000, 10.000000, 0.000000),
+            		NumberSequenceKeypoint.new(1.000000, 10.000000, 0.000000)
+            	})
+            		emitter.Transparency = NumberSequence.new({
+            		NumberSequenceKeypoint.new(0.000000, 1.000000, 0.000000),
+            		NumberSequenceKeypoint.new(0.500000, 0.550000, 0.000000),
+            		NumberSequenceKeypoint.new(1.000000, 1.000000, 0.000000)
+            	})
+            		emitter.Lifetime = NumberRange.new(1.500000)
+            		emitter.Rate = 1.000000
+            		-- Rotation
+            		emitter.Rotation = NumberRange.new(-360.000000, 360.000000)
+            		emitter.RotSpeed = NumberRange.new(0.000000)
+            		emitter.Orientation = Enum.ParticleOrientation.VelocityPerpendicular
+            		-- Flipbook
+            		emitter.FlipbookLayout = Enum.ParticleFlipbookLayout.None
+            		emitter.FlipbookFramerate = NumberRange.new(5.000000)
+            		-- Behavior
+            		emitter.LockedToPart = true
+            		-- Visual
+            		emitter.LightInfluence = 0.000000
+            		emitter.Brightness = 3.000000
+            		-- Shape
+            		emitter.Shape = Enum.ParticleEmitterShape.Box
+            		emitter.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+            		emitter.ShapeInOut = Enum.ParticleEmitterShapeInOut.Outward
+            		emitter.ShapePartial = 1.000000
+            		-- Motion
+            		emitter.Speed = NumberRange.new(0.001000)
+            		emitter.Acceleration = Vector3.new(0.000000, 0.000000, 0.000000)
+            		emitter.SpreadAngle = Vector2.new(0.000000, 0.000000)
+            		emitter.VelocitySpread = 0.000000
+            		emitter.Parent = attach
+            	end
+
+            table.insert(createdInstances, attach)
+
+            	-- Attachment: B (Path: Workspace → Model → Pack4 → POF:RE AURA MUTANTS RAGE → Torso → BEAM OF POWER → B)
+            	do
+            		local attach = Instance.new("Attachment")
+            		attach.Name = "B"
+            		attach.CFrame = CFrame.new(0.004150, 6.004150, 0.000000, 0.000000, 1.000000, -0.000000, -1.000000, 0.000000, 0.000000, 0.000000, 0.000000, 1.000000)
+            		attach.Axis = Vector3.new(0.000000, -1.000000, 0.000000)
+            		attach.SecondaryAxis = Vector3.new(1.000000, 0.000000, 0.000000)
+            		attach.Parent = root
+            		-- ParticleEmitter: Explosion 2
+            		local emitter = Instance.new("ParticleEmitter")
+            		emitter.Name = "Explosion 2"
+            		-- Core
+            		emitter.Texture = "rbxassetid://13370283312"
+            		emitter.Color = ColorSequence.new({
+            		ColorSequenceKeypoint.new(0.000000, Color3.new(0.431373, 1.000000, 0.878431)),
+            		ColorSequenceKeypoint.new(1.000000, Color3.new(0.431373, 1.000000, 0.878431))
+            	})
+            		emitter.Size = NumberSequence.new({
+            		NumberSequenceKeypoint.new(0.000000, 0.000000, 0.000000),
+            		NumberSequenceKeypoint.new(1.000000, 10.000000, 0.000000)
+            	})
+            		emitter.Transparency = NumberSequence.new({
+            		NumberSequenceKeypoint.new(0.000000, 1.000000, 0.000000),
+            		NumberSequenceKeypoint.new(0.510000, 0.350000, 0.000000),
+            		NumberSequenceKeypoint.new(1.000000, 1.000000, 0.000000)
+            	})
+            		emitter.Lifetime = NumberRange.new(0.500000)
+            		emitter.Rate = 7.500000
+            		-- Rotation
+            		emitter.Rotation = NumberRange.new(-360.000000, 360.000000)
+            		emitter.RotSpeed = NumberRange.new(-100.000000, 100.000000)
+            		emitter.Orientation = Enum.ParticleOrientation.VelocityPerpendicular
+            		-- Flipbook
+            		emitter.FlipbookLayout = Enum.ParticleFlipbookLayout.Grid2x2
+            		emitter.FlipbookFramerate = NumberRange.new(5.000000)
+            		-- Behavior
+            		emitter.LockedToPart = true
+            		-- Visual
+            		emitter.LightEmission = 1.000000
+            		-- Shape
+            		emitter.Shape = Enum.ParticleEmitterShape.Box
+            		emitter.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+            		emitter.ShapeInOut = Enum.ParticleEmitterShapeInOut.Outward
+            		emitter.ShapePartial = 1.000000
+            		-- Motion
+            		emitter.Speed = NumberRange.new(0.001000)
+            		emitter.Acceleration = Vector3.new(0.000000, 0.000000, 0.000000)
+            		emitter.EmissionDirection = Enum.NormalId.Left
+            		emitter.SpreadAngle = Vector2.new(0.000000, 0.000000)
+            		emitter.VelocitySpread = 0.000000
+            		emitter.Parent = attach
+            		-- ParticleEmitter: Explosion 1
+            		local emitter = Instance.new("ParticleEmitter")
+            		emitter.Name = "Explosion 1"
+            		-- Core
+            		emitter.Texture = "rbxassetid://13370283312"
+            		emitter.Color = ColorSequence.new({
+            		ColorSequenceKeypoint.new(0.000000, Color3.new(0.266667, 0.619608, 0.513726)),
+            		ColorSequenceKeypoint.new(1.000000, Color3.new(0.266667, 0.619608, 0.513726))
+            	})
+            		emitter.Size = NumberSequence.new({
+            		NumberSequenceKeypoint.new(0.000000, 0.000000, 0.000000),
+            		NumberSequenceKeypoint.new(1.000000, 10.000000, 0.000000)
+            	})
+            		emitter.Transparency = NumberSequence.new({
+            		NumberSequenceKeypoint.new(0.000000, 1.000000, 0.000000),
+            		NumberSequenceKeypoint.new(0.510000, 0.350000, 0.000000),
+            		NumberSequenceKeypoint.new(1.000000, 1.000000, 0.000000)
+            	})
+            		emitter.Lifetime = NumberRange.new(0.500000)
+            		emitter.Rate = 7.500000
+            		-- Rotation
+            		emitter.Rotation = NumberRange.new(-360.000000, 360.000000)
+            		emitter.RotSpeed = NumberRange.new(-100.000000, 100.000000)
+            		emitter.Orientation = Enum.ParticleOrientation.VelocityPerpendicular
+            		-- Flipbook
+            		emitter.FlipbookLayout = Enum.ParticleFlipbookLayout.Grid2x2
+            		emitter.FlipbookFramerate = NumberRange.new(5.000000)
+            		-- Behavior
+            		emitter.LockedToPart = true
+            		-- Visual
+            		emitter.LightEmission = 1.000000
+            		-- Shape
+            		emitter.Shape = Enum.ParticleEmitterShape.Box
+            		emitter.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+            		emitter.ShapeInOut = Enum.ParticleEmitterShapeInOut.Outward
+            		emitter.ShapePartial = 1.000000
+            		-- Motion
+            		emitter.Speed = NumberRange.new(0.001000)
+            		emitter.Acceleration = Vector3.new(0.000000, 0.000000, 0.000000)
+            		emitter.EmissionDirection = Enum.NormalId.Left
+            		emitter.SpreadAngle = Vector2.new(0.000000, 0.000000)
+            		emitter.VelocitySpread = 0.000000
+            		emitter.Parent = attach
+            	end
+
+            table.insert(createdInstances, attach)
+
+            return createdInstances
+        end
+    },
+
+
+
     ["Wings"] = {
     Name = "Wings",
     Description = "Angel wings",
