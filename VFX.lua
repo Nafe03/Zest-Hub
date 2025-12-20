@@ -195,7 +195,7 @@ VFXRegistry.Effects = {
         -- Main attachment on torso/back
         local mainAttach = Instance.new("Attachment")
         mainAttach.Name = "WingsMainAttach"
-        mainAttach.CFrame = CFrame.new(0, 0.75, 0.5)  -- Slightly behind and above torso
+        mainAttach.CFrame = CFrame.new(0, 0.75, 1)  -- Slightly behind and above torso
         mainAttach.Parent = root
 
         -- Left wing attachment
@@ -219,7 +219,7 @@ VFXRegistry.Effects = {
         leftBeam.TextureSpeed = 0
         leftBeam.Width0 = 4
         leftBeam.Width1 = 6
-        leftBeam.CurveSize0 = 2
+        leftBeam.CurveSize0 = -4
         leftBeam.CurveSize1 = 2
         leftBeam.LightEmission = 1
         leftBeam.LightInfluence = 1
@@ -236,7 +236,7 @@ VFXRegistry.Effects = {
         rightBeam.TextureSpeed = 0
         rightBeam.Width0 = 4
         rightBeam.Width1 = 6
-        rightBeam.CurveSize0 = -2
+        rightBeam.CurveSize0 = 4
         rightBeam.CurveSize1 = -2
         rightBeam.LightEmission = 1
         rightBeam.LightInfluence = 1
