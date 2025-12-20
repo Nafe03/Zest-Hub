@@ -262,290 +262,290 @@ VFXRegistry.Effects = {
     Version = "1.0",
     Apply = function(root)
         local createdInstances = {}
-            local attach = Instance.new("Attachment")
-		attach.Name = "Attachment"
-		attach.CFrame = CFrame.new(0.000000, 0.000000, 0.000000, 1.000000, 0.000000, 0.000000, 0.000000, 1.000000, 0.000000, 0.000000, 0.000000, 1.000000)
-		attach.Parent = root
+        local attach = Instance.new("Attachment")
+        attach.Name = "Attachment"
+        attach.CFrame = CFrame.new(0, 0, 0)
+        attach.Parent = root
 
-		-- ParticleEmitter: Chromatic Water Fog
-		local emitter = Instance.new("ParticleEmitter")
-		emitter.Name = "Chromatic Water Fog"
-		emitter.Texture = "rbxassetid://104888060261813"
-		emitter.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0.000000, Color3.new(0.407843, 0.227451, 1.000000)),
-		ColorSequenceKeypoint.new(1.000000, Color3.new(0.407843, 0.227451, 1.000000))
-	})
-		emitter.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0.000000, 0.000000, 0.000000),
-		NumberSequenceKeypoint.new(0.091487, 1.834641, 0.000000),
-		NumberSequenceKeypoint.new(0.235070, 3.598719, 0.000000),
-		NumberSequenceKeypoint.new(1.000000, 5.786176, 0.000000)
-	})
-		emitter.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0.000000, 1.000000, 0.000000),
-		NumberSequenceKeypoint.new(0.029605, 0.382514, 0.000000),
-		NumberSequenceKeypoint.new(0.119518, 0.147541, 0.000000),
-		NumberSequenceKeypoint.new(0.484649, 0.000000, 0.000000),
-		NumberSequenceKeypoint.new(0.770833, 0.251366, 0.000000),
-		NumberSequenceKeypoint.new(0.906798, 0.573771, 0.000000),
-		NumberSequenceKeypoint.new(1.000000, 1.000000, 0.000000)
-	})
-		emitter.Lifetime = NumberRange.new(0.100000, 0.500000)
-		emitter.Rate = 10.000000
-		emitter.Speed = NumberRange.new(12.441599)
-		emitter.Acceleration = Vector3.new(0.000000, 0.000000, 0.000000)
-		emitter.Drag = 0.000000
-		emitter.VelocityInheritance = 0.000000
-		emitter.EmissionDirection = Enum.NormalId.Top
-		emitter.SpreadAngle = 0, 0
-		emitter.Rotation = NumberRange.new(-180.000000, 180.000000)
-		emitter.RotSpeed = NumberRange.new(0.000000)
-		emitter.Orientation = Enum.ParticleOrientation.FacingCamera
-		emitter.LightEmission = 1.000000
-		emitter.LightInfluence = 0.000000
-		emitter.Brightness = 1.000000
-		emitter.ZOffset = -0.700000
-		emitter.Enabled = true
-		emitter.TimeScale = 1.000000
-		emitter.Parent = attach
+        -- ParticleEmitter 1: Chromatic Water Fog
+        local emitter1 = Instance.new("ParticleEmitter")
+        emitter1.Name = "Chromatic Water Fog"
+        emitter1.Texture = "rbxassetid://104888060261813"
+        emitter1.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.new(0.407843, 0.227451, 1)),
+            ColorSequenceKeypoint.new(1, Color3.new(0.407843, 0.227451, 1))
+        })
+        emitter1.Size = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0, 0),
+            NumberSequenceKeypoint.new(0.091487, 1.834641, 0),
+            NumberSequenceKeypoint.new(0.235070, 3.598719, 0),
+            NumberSequenceKeypoint.new(1, 5.786176, 0)
+        })
+        emitter1.Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 1, 0),
+            NumberSequenceKeypoint.new(0.029605, 0.382514, 0),
+            NumberSequenceKeypoint.new(0.119518, 0.147541, 0),
+            NumberSequenceKeypoint.new(0.484649, 0, 0),
+            NumberSequenceKeypoint.new(0.770833, 0.251366, 0),
+            NumberSequenceKeypoint.new(0.906798, 0.573771, 0),
+            NumberSequenceKeypoint.new(1, 1, 0)
+        })
+        emitter1.Lifetime = NumberRange.new(0.1, 0.5)
+        emitter1.Rate = 10
+        emitter1.Speed = NumberRange.new(12.441599)
+        emitter1.Acceleration = Vector3.new(0, 0, 0)
+        emitter1.Drag = 0
+        emitter1.VelocityInheritance = 0
+        emitter1.EmissionDirection = Enum.NormalId.Top
+        emitter1.SpreadAngle = Vector2.new(0, 0)  -- ✅ FIXED
+        emitter1.Rotation = NumberRange.new(-180, 180)
+        emitter1.RotSpeed = NumberRange.new(0)
+        emitter1.Orientation = Enum.ParticleOrientation.FacingCamera
+        emitter1.LightEmission = 1
+        emitter1.LightInfluence = 0
+        emitter1.Brightness = 1
+        emitter1.ZOffset = -0.7
+        emitter1.Enabled = true
+        emitter1.TimeScale = 1
+        emitter1.Parent = attach
 
-		-- ParticleEmitter: ParticleEmitter
-		local emitter = Instance.new("ParticleEmitter")
-		emitter.Name = "ParticleEmitter"
-		emitter.Texture = "rbxassetid://17006172452"
-		emitter.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0.000000, Color3.new(0.431373, 0.290196, 1.000000)),
-		ColorSequenceKeypoint.new(1.000000, Color3.new(0.431373, 0.290196, 1.000000))
-	})
-		emitter.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0.000000, 0.000000, 0.000000),
-		NumberSequenceKeypoint.new(0.068664, 2.901510, 0.000000),
-		NumberSequenceKeypoint.new(1.000000, 5.319438, 0.000000)
-	})
-		emitter.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0.000000, 0.000000, 0.000000),
-		NumberSequenceKeypoint.new(1.000000, 0.000000, 0.000000)
-	})
-		emitter.Lifetime = NumberRange.new(0.500000, 1.000000)
-		emitter.Rate = 5.000000
-		emitter.Speed = NumberRange.new(0.073525)
-		emitter.Acceleration = Vector3.new(0.000000, 0.000000, 0.000000)
-		emitter.Drag = 0.000000
-		emitter.VelocityInheritance = 0.000000
-		emitter.EmissionDirection = Enum.NormalId.Top
-		emitter.SpreadAngle = 0, 0
-		emitter.Rotation = NumberRange.new(-180.000000, 180.000000)
-		emitter.RotSpeed = NumberRange.new(0.000000)
-		emitter.Orientation = Enum.ParticleOrientation.FacingCamera
-		emitter.LightEmission = 0.000000
-		emitter.LightInfluence = 0.000000
-		emitter.Brightness = 5.000000
-		emitter.ZOffset = 1.000000
-		emitter.Enabled = true
-		emitter.TimeScale = 1.000000
-		emitter.Parent = attach
+        -- ParticleEmitter 2
+        local emitter2 = Instance.new("ParticleEmitter")
+        emitter2.Name = "ParticleEmitter"
+        emitter2.Texture = "rbxassetid://17006172452"
+        emitter2.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.new(0.431373, 0.290196, 1)),
+            ColorSequenceKeypoint.new(1, Color3.new(0.431373, 0.290196, 1))
+        })
+        emitter2.Size = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0, 0),
+            NumberSequenceKeypoint.new(0.068664, 2.901510, 0),
+            NumberSequenceKeypoint.new(1, 5.319438, 0)
+        })
+        emitter2.Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0, 0),
+            NumberSequenceKeypoint.new(1, 0, 0)
+        })
+        emitter2.Lifetime = NumberRange.new(0.5, 1)
+        emitter2.Rate = 5
+        emitter2.Speed = NumberRange.new(0.073525)
+        emitter2.Acceleration = Vector3.new(0, 0, 0)
+        emitter2.Drag = 0
+        emitter2.VelocityInheritance = 0
+        emitter2.EmissionDirection = Enum.NormalId.Top
+        emitter2.SpreadAngle = Vector2.new(0, 0)  -- ✅ FIXED
+        emitter2.Rotation = NumberRange.new(-180, 180)
+        emitter2.RotSpeed = NumberRange.new(0)
+        emitter2.Orientation = Enum.ParticleOrientation.FacingCamera
+        emitter2.LightEmission = 0
+        emitter2.LightInfluence = 0
+        emitter2.Brightness = 5
+        emitter2.ZOffset = 1
+        emitter2.Enabled = true
+        emitter2.TimeScale = 1
+        emitter2.Parent = attach
 
-		-- ParticleEmitter: ParticleEmitter
-		local emitter = Instance.new("ParticleEmitter")
-		emitter.Name = "ParticleEmitter"
-		emitter.Texture = "rbxassetid://124359042766194"
-		emitter.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0.000000, Color3.new(0.431373, 0.290196, 1.000000)),
-		ColorSequenceKeypoint.new(1.000000, Color3.new(0.431373, 0.290196, 1.000000))
-	})
-		emitter.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0.000000, 0.000000, 0.000000),
-		NumberSequenceKeypoint.new(0.068664, 5.803020, 0.000000),
-		NumberSequenceKeypoint.new(1.000000, 10.638875, 0.000000)
-	})
-		emitter.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0.000000, 0.000000, 0.000000),
-		NumberSequenceKeypoint.new(1.000000, 0.000000, 0.000000)
-	})
-		emitter.Lifetime = NumberRange.new(0.500000, 1.000000)
-		emitter.Rate = 5.000000
-		emitter.Speed = NumberRange.new(0.147050)
-		emitter.Acceleration = Vector3.new(0.000000, 0.000000, 0.000000)
-		emitter.Drag = 0.000000
-		emitter.VelocityInheritance = 0.000000
-		emitter.EmissionDirection = Enum.NormalId.Top
-		emitter.SpreadAngle = 0, 0
-		emitter.Rotation = NumberRange.new(0.000000)
-		emitter.RotSpeed = NumberRange.new(0.000000)
-		emitter.Orientation = Enum.ParticleOrientation.FacingCamera
-		emitter.LightEmission = 0.000000
-		emitter.LightInfluence = 0.000000
-		emitter.Brightness = 5.000000
-		emitter.ZOffset = 1.000000
-		emitter.Enabled = true
-		emitter.TimeScale = 1.000000
-		emitter.Parent = attach
+        -- ParticleEmitter 3
+        local emitter3 = Instance.new("ParticleEmitter")
+        emitter3.Name = "ParticleEmitter"
+        emitter3.Texture = "rbxassetid://124359042766194"
+        emitter3.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.new(0.431373, 0.290196, 1)),
+            ColorSequenceKeypoint.new(1, Color3.new(0.431373, 0.290196, 1))
+        })
+        emitter3.Size = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0, 0),
+            NumberSequenceKeypoint.new(0.068664, 5.803020, 0),
+            NumberSequenceKeypoint.new(1, 10.638875, 0)
+        })
+        emitter3.Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0, 0),
+            NumberSequenceKeypoint.new(1, 0, 0)
+        })
+        emitter3.Lifetime = NumberRange.new(0.5, 1)
+        emitter3.Rate = 5
+        emitter3.Speed = NumberRange.new(0.147050)
+        emitter3.Acceleration = Vector3.new(0, 0, 0)
+        emitter3.Drag = 0
+        emitter3.VelocityInheritance = 0
+        emitter3.EmissionDirection = Enum.NormalId.Top
+        emitter3.SpreadAngle = Vector2.new(0, 0)  -- ✅ FIXED
+        emitter3.Rotation = NumberRange.new(0)
+        emitter3.RotSpeed = NumberRange.new(0)
+        emitter3.Orientation = Enum.ParticleOrientation.FacingCamera
+        emitter3.LightEmission = 0
+        emitter3.LightInfluence = 0
+        emitter3.Brightness = 5
+        emitter3.ZOffset = 1
+        emitter3.Enabled = true
+        emitter3.TimeScale = 1
+        emitter3.Parent = attach
 
-		-- ParticleEmitter: ParticleEmitter
-		local emitter = Instance.new("ParticleEmitter")
-		emitter.Name = "ParticleEmitter"
-		emitter.Texture = "rbxassetid://13145063652"
-		emitter.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0.000000, Color3.new(0.000000, 0.000000, 0.000000)),
-		ColorSequenceKeypoint.new(1.000000, Color3.new(0.000000, 0.000000, 0.000000))
-	})
-		emitter.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0.000000, 0.047808, 0.000000),
-		NumberSequenceKeypoint.new(1.000000, 5.402326, 0.677608)
-	})
-		emitter.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0.000000, 1.000000, 0.000000),
-		NumberSequenceKeypoint.new(0.063591, 0.212500, 0.000000),
-		NumberSequenceKeypoint.new(0.500732, 0.000000, 0.000000),
-		NumberSequenceKeypoint.new(0.962594, 0.668750, 0.000000),
-		NumberSequenceKeypoint.new(1.000000, 1.000000, 0.000000)
-	})
-		emitter.Lifetime = NumberRange.new(0.500000, 1.000000)
-		emitter.Rate = 15.000000
-		emitter.Speed = NumberRange.new(10.367999)
-		emitter.Acceleration = Vector3.new(0.000000, 0.000000, 0.000000)
-		emitter.Drag = 0.000000
-		emitter.VelocityInheritance = 0.000000
-		emitter.EmissionDirection = Enum.NormalId.Top
-		emitter.SpreadAngle = 0, 0
-		emitter.Rotation = NumberRange.new(-360.000000, 360.000000)
-		emitter.RotSpeed = NumberRange.new(0.000000)
-		emitter.Orientation = Enum.ParticleOrientation.VelocityParallel
-		emitter.LightEmission = 0.000000
-		emitter.LightInfluence = 0.000000
-		emitter.Brightness = 25.000000
-		emitter.ZOffset = -1.000000
-		emitter.Enabled = true
-		emitter.TimeScale = 1.000000
-		emitter.Parent = attach
+        -- ParticleEmitter 4
+        local emitter4 = Instance.new("ParticleEmitter")
+        emitter4.Name = "ParticleEmitter"
+        emitter4.Texture = "rbxassetid://13145063652"
+        emitter4.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.new(0, 0, 0)),
+            ColorSequenceKeypoint.new(1, Color3.new(0, 0, 0))
+        })
+        emitter4.Size = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0.047808, 0),
+            NumberSequenceKeypoint.new(1, 5.402326, 0.677608)
+        })
+        emitter4.Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 1, 0),
+            NumberSequenceKeypoint.new(0.063591, 0.212500, 0),
+            NumberSequenceKeypoint.new(0.500732, 0, 0),
+            NumberSequenceKeypoint.new(0.962594, 0.668750, 0),
+            NumberSequenceKeypoint.new(1, 1, 0)
+        })
+        emitter4.Lifetime = NumberRange.new(0.5, 1)
+        emitter4.Rate = 15
+        emitter4.Speed = NumberRange.new(10.367999)
+        emitter4.Acceleration = Vector3.new(0, 0, 0)
+        emitter4.Drag = 0
+        emitter4.VelocityInheritance = 0
+        emitter4.EmissionDirection = Enum.NormalId.Top
+        emitter4.SpreadAngle = Vector2.new(0, 0)  -- ✅ FIXED
+        emitter4.Rotation = NumberRange.new(-360, 360)
+        emitter4.RotSpeed = NumberRange.new(0)
+        emitter4.Orientation = Enum.ParticleOrientation.VelocityParallel
+        emitter4.LightEmission = 0
+        emitter4.LightInfluence = 0
+        emitter4.Brightness = 25
+        emitter4.ZOffset = -1
+        emitter4.Enabled = true
+        emitter4.TimeScale = 1
+        emitter4.Parent = attach
 
-		-- ParticleEmitter: ParticleEmitter
-		local emitter = Instance.new("ParticleEmitter")
-		emitter.Name = "ParticleEmitter"
-		emitter.Texture = "rbxassetid://15333825012"
-		emitter.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0.000000, Color3.new(0.407843, 0.227451, 1.000000)),
-		ColorSequenceKeypoint.new(1.000000, Color3.new(0.407843, 0.227451, 1.000000))
-	})
-		emitter.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0.000000, 0.000000, 0.000000),
-		NumberSequenceKeypoint.new(0.091487, 1.834641, 0.000000),
-		NumberSequenceKeypoint.new(0.235070, 3.598719, 0.000000),
-		NumberSequenceKeypoint.new(1.000000, 5.786176, 0.000000)
-	})
-		emitter.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0.000000, 1.000000, 0.000000),
-		NumberSequenceKeypoint.new(0.029605, 0.382514, 0.000000),
-		NumberSequenceKeypoint.new(0.119518, 0.147541, 0.000000),
-		NumberSequenceKeypoint.new(0.484649, 0.000000, 0.000000),
-		NumberSequenceKeypoint.new(0.770833, 0.251366, 0.000000),
-		NumberSequenceKeypoint.new(0.906798, 0.573771, 0.000000),
-		NumberSequenceKeypoint.new(1.000000, 1.000000, 0.000000)
-	})
-		emitter.Lifetime = NumberRange.new(0.100000, 0.500000)
-		emitter.Rate = 10.000000
-		emitter.Speed = NumberRange.new(12.441599)
-		emitter.Acceleration = Vector3.new(0.000000, 0.000000, 0.000000)
-		emitter.Drag = 0.000000
-		emitter.VelocityInheritance = 0.000000
-		emitter.EmissionDirection = Enum.NormalId.Top
-		emitter.SpreadAngle = 0, 0
-		emitter.Rotation = NumberRange.new(-180.000000, 180.000000)
-		emitter.RotSpeed = NumberRange.new(0.000000)
-		emitter.Orientation = Enum.ParticleOrientation.FacingCamera
-		emitter.LightEmission = 0.000000
-		emitter.LightInfluence = 0.000000
-		emitter.Brightness = 60.000000
-		emitter.ZOffset = -0.700000
-		emitter.Enabled = true
-		emitter.TimeScale = 1.000000
-		emitter.Parent = attach
+        -- ParticleEmitter 5
+        local emitter5 = Instance.new("ParticleEmitter")
+        emitter5.Name = "ParticleEmitter"
+        emitter5.Texture = "rbxassetid://15333825012"
+        emitter5.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.new(0.407843, 0.227451, 1)),
+            ColorSequenceKeypoint.new(1, Color3.new(0.407843, 0.227451, 1))
+        })
+        emitter5.Size = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0, 0),
+            NumberSequenceKeypoint.new(0.091487, 1.834641, 0),
+            NumberSequenceKeypoint.new(0.235070, 3.598719, 0),
+            NumberSequenceKeypoint.new(1, 5.786176, 0)
+        })
+        emitter5.Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 1, 0),
+            NumberSequenceKeypoint.new(0.029605, 0.382514, 0),
+            NumberSequenceKeypoint.new(0.119518, 0.147541, 0),
+            NumberSequenceKeypoint.new(0.484649, 0, 0),
+            NumberSequenceKeypoint.new(0.770833, 0.251366, 0),
+            NumberSequenceKeypoint.new(0.906798, 0.573771, 0),
+            NumberSequenceKeypoint.new(1, 1, 0)
+        })
+        emitter5.Lifetime = NumberRange.new(0.1, 0.5)
+        emitter5.Rate = 10
+        emitter5.Speed = NumberRange.new(12.441599)
+        emitter5.Acceleration = Vector3.new(0, 0, 0)
+        emitter5.Drag = 0
+        emitter5.VelocityInheritance = 0
+        emitter5.EmissionDirection = Enum.NormalId.Top
+        emitter5.SpreadAngle = Vector2.new(0, 0)  -- ✅ FIXED
+        emitter5.Rotation = NumberRange.new(-180, 180)
+        emitter5.RotSpeed = NumberRange.new(0)
+        emitter5.Orientation = Enum.ParticleOrientation.FacingCamera
+        emitter5.LightEmission = 0
+        emitter5.LightInfluence = 0
+        emitter5.Brightness = 60
+        emitter5.ZOffset = -0.7
+        emitter5.Enabled = true
+        emitter5.TimeScale = 1
+        emitter5.Parent = attach
 
-		-- ParticleEmitter: ParticleEmitter
-		local emitter = Instance.new("ParticleEmitter")
-		emitter.Name = "ParticleEmitter"
-		emitter.Texture = "rbxassetid://13013256540"
-		emitter.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0.000000, Color3.new(0.000000, 0.000000, 0.000000)),
-		ColorSequenceKeypoint.new(1.000000, Color3.new(0.000000, 0.000000, 0.000000))
-	})
-		emitter.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0.000000, 0.000000, 0.000000),
-		NumberSequenceKeypoint.new(0.091487, 2.751962, 0.000000),
-		NumberSequenceKeypoint.new(0.235070, 5.398077, 0.000000),
-		NumberSequenceKeypoint.new(1.000000, 8.679261, 0.000000)
-	})
-		emitter.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0.000000, 1.000000, 0.000000),
-		NumberSequenceKeypoint.new(0.029605, 0.382514, 0.000000),
-		NumberSequenceKeypoint.new(0.119518, 0.147541, 0.000000),
-		NumberSequenceKeypoint.new(0.484649, 0.000000, 0.000000),
-		NumberSequenceKeypoint.new(0.770833, 0.251366, 0.000000),
-		NumberSequenceKeypoint.new(0.906798, 0.573771, 0.000000),
-		NumberSequenceKeypoint.new(1.000000, 1.000000, 0.000000)
-	})
-		emitter.Lifetime = NumberRange.new(0.100000, 0.800000)
-		emitter.Rate = 10.000000
-		emitter.Speed = NumberRange.new(10.367999)
-		emitter.Acceleration = Vector3.new(0.000000, 0.000000, 0.000000)
-		emitter.Drag = 0.000000
-		emitter.VelocityInheritance = 0.000000
-		emitter.EmissionDirection = Enum.NormalId.Top
-		emitter.SpreadAngle = 0, 0
-		emitter.Rotation = NumberRange.new(-180.000000, 180.000000)
-		emitter.RotSpeed = NumberRange.new(0.000000)
-		emitter.Orientation = Enum.ParticleOrientation.FacingCamera
-		emitter.LightEmission = 0.000000
-		emitter.LightInfluence = 0.000000
-		emitter.Brightness = 5.000000
-		emitter.ZOffset = -1.000000
-		emitter.Enabled = true
-		emitter.TimeScale = 1.000000
-		emitter.Parent = attach
+        -- ParticleEmitter 6
+        local emitter6 = Instance.new("ParticleEmitter")
+        emitter6.Name = "ParticleEmitter"
+        emitter6.Texture = "rbxassetid://13013256540"
+        emitter6.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.new(0, 0, 0)),
+            ColorSequenceKeypoint.new(1, Color3.new(0, 0, 0))
+        })
+        emitter6.Size = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0, 0),
+            NumberSequenceKeypoint.new(0.091487, 2.751962, 0),
+            NumberSequenceKeypoint.new(0.235070, 5.398077, 0),
+            NumberSequenceKeypoint.new(1, 8.679261, 0)
+        })
+        emitter6.Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 1, 0),
+            NumberSequenceKeypoint.new(0.029605, 0.382514, 0),
+            NumberSequenceKeypoint.new(0.119518, 0.147541, 0),
+            NumberSequenceKeypoint.new(0.484649, 0, 0),
+            NumberSequenceKeypoint.new(0.770833, 0.251366, 0),
+            NumberSequenceKeypoint.new(0.906798, 0.573771, 0),
+            NumberSequenceKeypoint.new(1, 1, 0)
+        })
+        emitter6.Lifetime = NumberRange.new(0.1, 0.8)
+        emitter6.Rate = 10
+        emitter6.Speed = NumberRange.new(10.367999)
+        emitter6.Acceleration = Vector3.new(0, 0, 0)
+        emitter6.Drag = 0
+        emitter6.VelocityInheritance = 0
+        emitter6.EmissionDirection = Enum.NormalId.Top
+        emitter6.SpreadAngle = Vector2.new(0, 0)  -- ✅ FIXED
+        emitter6.Rotation = NumberRange.new(-180, 180)
+        emitter6.RotSpeed = NumberRange.new(0)
+        emitter6.Orientation = Enum.ParticleOrientation.FacingCamera
+        emitter6.LightEmission = 0
+        emitter6.LightInfluence = 0
+        emitter6.Brightness = 5
+        emitter6.ZOffset = -1
+        emitter6.Enabled = true
+        emitter6.TimeScale = 1
+        emitter6.Parent = attach
 
-		-- ParticleEmitter: ParticleEmitter
-		local emitter = Instance.new("ParticleEmitter")
-		emitter.Name = "ParticleEmitter"
-		emitter.Texture = "rbxassetid://11163763158"
-		emitter.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0.000000, Color3.new(0.000000, 0.000000, 0.000000)),
-		ColorSequenceKeypoint.new(1.000000, Color3.new(0.000000, 0.000000, 0.000000))
-	})
-		emitter.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0.000000, 1.312189, 0.000000),
-		NumberSequenceKeypoint.new(1.000000, 2.384176, 0.564673)
-	})
-		emitter.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0.000000, 1.000000, 0.000000),
-		NumberSequenceKeypoint.new(0.063591, 0.212500, 0.000000),
-		NumberSequenceKeypoint.new(0.500732, 0.000000, 0.000000),
-		NumberSequenceKeypoint.new(0.962594, 0.668750, 0.000000),
-		NumberSequenceKeypoint.new(1.000000, 1.000000, 0.000000)
-	})
-		emitter.Lifetime = NumberRange.new(0.500000, 1.000000)
-		emitter.Rate = 15.000000
-		emitter.Speed = NumberRange.new(10.367999)
-		emitter.Acceleration = Vector3.new(0.000000, 0.000000, 0.000000)
-		emitter.Drag = 0.000000
-		emitter.VelocityInheritance = 0.000000
-		emitter.EmissionDirection = Enum.NormalId.Top
-		emitter.SpreadAngle = 0, 0
-		emitter.Rotation = NumberRange.new(-360.000000, 360.000000)
-		emitter.RotSpeed = NumberRange.new(0.000000)
-		emitter.Orientation = Enum.ParticleOrientation.VelocityParallel
-		emitter.LightEmission = 0.000000
-		emitter.LightInfluence = 0.000000
-		emitter.Brightness = 10.000000
-		emitter.ZOffset = -1.000000
-		emitter.Enabled = true
-		emitter.TimeScale = 1.000000
-		emitter.Parent = attach
-			
-	    table.insert(createdInstances, attach)
-			
-		return createdInstances
+        -- ParticleEmitter 7
+        local emitter7 = Instance.new("ParticleEmitter")
+        emitter7.Name = "ParticleEmitter"
+        emitter7.Texture = "rbxassetid://11163763158"
+        emitter7.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.new(0, 0, 0)),
+            ColorSequenceKeypoint.new(1, Color3.new(0, 0, 0))
+        })
+        emitter7.Size = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 1.312189, 0),
+            NumberSequenceKeypoint.new(1, 2.384176, 0.564673)
+        })
+        emitter7.Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 1, 0),
+            NumberSequenceKeypoint.new(0.063591, 0.212500, 0),
+            NumberSequenceKeypoint.new(0.500732, 0, 0),
+            NumberSequenceKeypoint.new(0.962594, 0.668750, 0),
+            NumberSequenceKeypoint.new(1, 1, 0)
+        })
+        emitter7.Lifetime = NumberRange.new(0.5, 1)
+        emitter7.Rate = 15
+        emitter7.Speed = NumberRange.new(10.367999)
+        emitter7.Acceleration = Vector3.new(0, 0, 0)
+        emitter7.Drag = 0
+        emitter7.VelocityInheritance = 0
+        emitter7.EmissionDirection = Enum.NormalId.Top
+        emitter7.SpreadAngle = Vector2.new(0, 0)  -- ✅ FIXED
+        emitter7.Rotation = NumberRange.new(-360, 360)
+        emitter7.RotSpeed = NumberRange.new(0)
+        emitter7.Orientation = Enum.ParticleOrientation.VelocityParallel
+        emitter7.LightEmission = 0
+        emitter7.LightInfluence = 0
+        emitter7.Brightness = 10
+        emitter7.ZOffset = -1
+        emitter7.Enabled = true
+        emitter7.TimeScale = 1
+        emitter7.Parent = attach
+
+        table.insert(createdInstances, attach)
+        return createdInstances
     end
 },
+
     -- Add more VFX here easily!
 }
 
