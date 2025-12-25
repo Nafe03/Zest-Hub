@@ -1,5 +1,5 @@
 local UILibrary = {}
-print("NIga")
+
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
@@ -244,11 +244,6 @@ function UILibrary.new(options)
         TabHighlight.ZIndex = 2
         TabHighlight.Visible = false
         
-        local HighlightCorner = Instance.new("UICorner")
-        HighlightCorner.CornerRadius = UDim.new(0, 6)
-        HighlightCorner.Parent = TabHighlight
-
-
         local HighlightCorner = Instance.new("UICorner")
         HighlightCorner.CornerRadius = UDim.new(0, 6)
         HighlightCorner.Parent = TabHighlight
@@ -621,23 +616,7 @@ function UILibrary.new(options)
                             svButtonStroke.Thickness = 2
                             svButtonStroke.Parent = saturationValueButton
 
-                            local Fill1 = Instance.new("Frame")
-                            Fill1.Name = "Fill"
-                            Fill1.Parent = colorPickerFrame
-                            Fill1.BackgroundColor3 = Color3.new(166, 128, 160)
-                            Fill1.BorderSizePixel = 1
-                            Fill1.Position = UDim2.new(0, 0, 0, -8)
-                            Fill1.Size = UDim2.new(0, 178, 0, 2)
-                            Fill1.ZIndex = 101
-
-                            local UICorner = Instance.new("UICorner")
-                            UICorner.CornerRadius = UDim.new(0, 50)
-                            UICorner.Parent = Fill
-
-                            local UIStroke = Instance.new("UIStroke")
-                            UIStroke.Parent = Fill
-                            UIStroke.Thickness = UDim.new(1.2)
-
+                            -- Hue slider
                             local hueSlider = Instance.new("Frame")
                             hueSlider.Name = "HueSlider"
                             hueSlider.Parent = colorPickerFrame
@@ -1236,7 +1215,6 @@ function UILibrary.new(options)
                         end)
 
                         Button.MouseButton1Click:Connect(function()
-                            -- Click animation
                             smoothTween(Button, {BackgroundColor3 = Color3.fromRGB(55, 55, 55)}, 0.05)
                             task.wait(0.05)
                             smoothTween(Button, {BackgroundColor3 = Color3.fromRGB(45, 45, 45)}, 0.1)
