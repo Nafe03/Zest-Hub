@@ -248,6 +248,11 @@ function UILibrary.new(options)
         HighlightCorner.CornerRadius = UDim.new(0, 6)
         HighlightCorner.Parent = TabHighlight
 
+
+        local HighlightCorner = Instance.new("UICorner")
+        HighlightCorner.CornerRadius = UDim.new(0, 6)
+        HighlightCorner.Parent = TabHighlight
+
         -- Tab Content
         TabContent.Name = name .. "Content"
         TabContent.Parent = ContentFrame
@@ -625,6 +630,14 @@ function UILibrary.new(options)
                             Fill1.Size = UDim2.new(0, 178, 0, 2)
                             Fill1.ZIndex = 101
 
+                            local UICorner = Instance.new("UICorner")
+                            UICorner.CornerRadius = UDim2.new(0, 50)
+                            UICorner.Parent = Fill
+
+                            local UIStroke = Instance.new("UIStroke")
+                            UIStroke.Parent = Fill
+                            UIStroke.Thickness = UDim2.new(1.2)
+
                             local hueSlider = Instance.new("Frame")
                             hueSlider.Name = "HueSlider"
                             hueSlider.Parent = colorPickerFrame
@@ -868,7 +881,7 @@ function UILibrary.new(options)
                         SliderFrame.Name = id .. "Slider"
                         SliderFrame.Parent = GroupboxContent
                         SliderFrame.BackgroundTransparency = 1
-                        SliderFrame.Size = UDim2.new(1, 0, 0, 40)
+                        SliderFrame.Size = UDim2.new(1.2, 0, 0, 40)
                         SliderFrame.LayoutOrder = #self.Elements + 1
 
                         SliderText.Name = "Text"
@@ -916,7 +929,7 @@ function UILibrary.new(options)
                         ValueLabel.Name = "Value"
                         ValueLabel.Parent = SliderFrame
                         ValueLabel.BackgroundTransparency = 1
-                        ValueLabel.Position = UDim2.new(1, -30, 0, 0)
+                        ValueLabel.Position = UDim2.new(1, -60, 0, 0)
                         ValueLabel.Size = UDim2.new(0, 30, 0, 20)
                         ValueLabel.Font = Enum.Font.GothamBold
                         ValueLabel.Text = tostring(options.Default or options.Min or 0)
