@@ -631,12 +631,12 @@ function UILibrary.new(options)
                             Fill1.ZIndex = 101
 
                             local UICorner = Instance.new("UICorner")
-                            UICorner.CornerRadius = UDim2.new(0, 50)
+                            UICorner.CornerRadius = UDim.new(0, 50)
                             UICorner.Parent = Fill
 
                             local UIStroke = Instance.new("UIStroke")
                             UIStroke.Parent = Fill
-                            UIStroke.Thickness = UDim2.new(1.2)
+                            UIStroke.Thickness = UDim.new(1.2)
 
                             local hueSlider = Instance.new("Frame")
                             hueSlider.Name = "HueSlider"
