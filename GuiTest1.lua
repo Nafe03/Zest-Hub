@@ -495,7 +495,7 @@ function UILibrary.new(options)
                             -- Create dedicated ScreenGui for color picker
                             local colorPickerScreenGui = Instance.new("ScreenGui")
                             colorPickerScreenGui.Name = "ColorPickerGui_" .. id
-                            colorPickerScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+                            colorPickerScreenGui.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
                             colorPickerScreenGui.ResetOnSpawn = false
                             colorPickerScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
                             colorPickerScreenGui.DisplayOrder = 999
