@@ -672,8 +672,12 @@ function UILibrary.new(options)
                                 local mousePos = UserInputService:GetMouseLocation()
                                 local windowPos = colorPickerWindow.AbsolutePosition
                                 local windowSize = colorPickerWindow.AbsoluteSize
-                                local guiInset = game:GetService("GuiService"):GetGuiInset()
-                                mousePos = Vector2.new(mousePos.X, mousePos.Y - guiInset.Y)
+                                local success, guiInset = pcall(function()
+                                    return game:GetService("GuiService"):GetGuiInset()
+                                end)
+                                if success then
+                                    mousePos = Vector2.new(mousePos.X, mousePos.Y - guiInset.Y)
+                                end
                                 if mousePos.X < windowPos.X or mousePos.X > windowPos.X + windowSize.X or
                                    mousePos.Y < windowPos.Y or mousePos.Y > windowPos.Y + windowSize.Y then
                                     colorPickerWindow.Visible = false
@@ -1130,8 +1134,12 @@ function UILibrary.new(options)
                                     local mousePos = UserInputService:GetMouseLocation()
                                     local windowPos = colorPickerWindow.AbsolutePosition
                                     local windowSize = colorPickerWindow.AbsoluteSize
-                                    local guiInset = game:GetService("GuiService"):GetGuiInset()
-                                    mousePos = Vector2.new(mousePos.X, mousePos.Y - guiInset.Y)
+                                    local success, guiInset = pcall(function()
+                                        return game:GetService("GuiService"):GetGuiInset()
+                                    end)
+                                    if success then
+                                        mousePos = Vector2.new(mousePos.X, mousePos.Y - guiInset.Y)
+                                    end
                                     if mousePos.X < windowPos.X or mousePos.X > windowPos.X + windowSize.X or
                                        mousePos.Y < windowPos.Y or mousePos.Y > windowPos.Y + windowSize.Y then
                                         colorPickerWindow.Visible = false
