@@ -7,7 +7,7 @@ local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local TextService = game:GetService("TextService")
-
+print("Nika")
 -- Color conversion functions
 local function HSVtoRGB(h, s, v)
     local r, g, b
