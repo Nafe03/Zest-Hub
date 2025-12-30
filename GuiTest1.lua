@@ -68,7 +68,6 @@ function UILibrary.new(options)
     local defaultOptions = {
         Name = "UI Library",
         ToggleKey = Enum.KeyCode.RightShift,
-        CloseKey = Enum.KeyCode.X,
         DefaultColor = Color3.fromRGB(138, 102, 204),
         TextColor = Color3.fromRGB(220, 220, 220),
         BackgroundColor = Color3.fromRGB(18, 18, 18),
@@ -179,10 +178,7 @@ function UILibrary.new(options)
         if gameProcessed then return end
         if input.KeyCode == options.ToggleKey then
             Window:ToggleVisibility()
-        elseif input.KeyCode == options.CloseKey then
-            Window:Destroy()
         end
-    end
     UserInputService.InputBegan:Connect(handleInput)
 
     function Window:AddTab(name)
