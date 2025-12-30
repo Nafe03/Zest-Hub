@@ -179,10 +179,7 @@ function UILibrary.new(options)
         if gameProcessed then return end
         if input.KeyCode == options.ToggleKey then
             Window:ToggleVisibility()
-        elseif input.KeyCode == options.CloseKey then
-            Window:Destroy()
         end
-    end
     UserInputService.InputBegan:Connect(handleInput)
 
     function Window:AddTab(name)
