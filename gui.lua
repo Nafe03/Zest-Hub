@@ -691,11 +691,7 @@ function UILibrary.new(options)
                                 if ColorIcon then
                                     smoothTween(ColorIcon, {BackgroundColor3 = currentColor}, 0.15)
                                 end
-                                
-                                if svOverlay then
-                                    smoothTween(svOverlay, {BorderColor3 = currentColor}, 0.15)
-                                end
-                                
+                            
                                 updating = false
                                 
                                 if options.ColorCallback then
