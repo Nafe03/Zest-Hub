@@ -560,6 +560,7 @@ function UILibrary.new(options)
                             local svOverlay = Instance.new("Frame")
                             svOverlay.Name = "SVOverlay"
                             svOverlay.Parent = saturationValueBox
+                            
                             svOverlay.BackgroundTransparency = 0
                             svOverlay.Size = UDim2.new(1, 0, 1, 0)
                             svOverlay.ZIndex = 102
@@ -691,7 +692,9 @@ function UILibrary.new(options)
                                 if ColorIcon then
                                     smoothTween(ColorIcon, {BackgroundColor3 = currentColor}, 0.15)
                                 end
-                            
+
+                                smoothTween(svOverlay, {BorderColor3 = currentColor}, 0.15)
+                                smoothTween(svOverlay2, {BorderColor3 = currentColor}, 0.15)
                                 updating = false
                                 
                                 if options.ColorCallback then
