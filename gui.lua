@@ -193,6 +193,7 @@ function UILibrary.new(options)
         if input.KeyCode == options.ToggleKey then
             Window:ToggleVisibility()
         end
+    end
 
     UserInputService.InputBegan:Connect(handleInput)
 
