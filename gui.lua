@@ -514,19 +514,17 @@ function UILibrary.new(options)
                             local colorPickerWindow = Instance.new("Frame")
                             colorPickerWindow.Name = "ColorPickerWindow"
                             colorPickerWindow.Parent = colorPickerScreenGui
-                            colorPickerWindow.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+                            colorPickerWindow.BackgroundColor3 = Color3.fromRGB(5, 5, 5)
                             colorPickerWindow.BorderSizePixel = 0
                             colorPickerWindow.Position = UDim2.new(0.5, -125, 0.5, -100)
                             colorPickerWindow.Size = UDim2.new(0, 250, 0, 200)
                             colorPickerWindow.Visible = false
                             colorPickerWindow.ZIndex = 100
                             
-                            local windowCorner = Instance.new("UICorner")
-                            windowCorner.CornerRadius = UDim.new(0, 10)
-                            windowCorner.Parent = colorPickerWindow
                             
                             local windowStroke = Instance.new("UIStroke")
-                            windowStroke.Color = Color3.fromRGB(60, 60, 60)
+                            windowStroke.Color = Color3.fromRGB(0, 0, 0)
+                            windowStroke.LineJoinMode = Enum.LineJoinMode.Miter
                             windowStroke.Thickness = 1.5
                             windowStroke.Parent = colorPickerWindow
                             
@@ -550,7 +548,7 @@ function UILibrary.new(options)
                             saturationValueBox.ZIndex = 101
                             
                             local svCorner = Instance.new("UICorner")
-                            svCorner.CornerRadius = UDim.new(0, 6)
+                            svCorner.CornerRadius = UDim.new(0, 0)
                             svCorner.Parent = saturationValueBox
                             
                             local svStroke = Instance.new("UIStroke")
@@ -562,7 +560,7 @@ function UILibrary.new(options)
                             local svOverlay = Instance.new("Frame")
                             svOverlay.Name = "SVOverlay"
                             svOverlay.Parent = saturationValueBox
-                            svOverlay.BackgroundTransparency = 1
+                            svOverlay.BackgroundTransparency = 0
                             svOverlay.Size = UDim2.new(1, 0, 1, 0)
                             svOverlay.ZIndex = 102
                             
@@ -581,6 +579,7 @@ function UILibrary.new(options)
                             local svOverlay2 = Instance.new("Frame")
                             svOverlay2.Name = "SVOverlay2"
                             svOverlay2.Parent = saturationValueBox
+                            svOverlay2.BackgroundTransparency = 0
                             svOverlay2.BackgroundColor3 = Color3.new(0, 0, 0)
                             svOverlay2.Size = UDim2.new(1, 0, 1, 0)
                             svOverlay2.ZIndex = 103
