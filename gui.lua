@@ -15,7 +15,7 @@ local function HSVtoRGB(h, s, v)
     local q = v * (1 - f * s)
     local t = v * (1 - (1 - f) * s)
     
-    local imod = i % 6
+    local imod = i % 6f
     if imod == 0 then
         r, g, b = v, t, p
     elseif imod == 1 then
@@ -529,7 +529,7 @@ function UILibrary.new(options)
                             windowStroke.Parent = colorPickerWindow
                             
                             -- Content frame for color picker
-                            local frame21 = Instance.new("Frame")
+                            local frame = Instance.new("Frame")
                             frame.Size = UDim2.new(0, 250, 0, 2)
                             frame.Parnet = colorPickerWindow
                             frame.BackgroundColor3 = DefaultColor
