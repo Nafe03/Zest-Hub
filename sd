@@ -499,8 +499,8 @@ function UILibrary.new(options)
                             updateToggle()
                         end)
                     
-                        -- Color picker implementation (fixed version)
--- This replaces the section starting from "local colorPicker = nil" in your AddToggle function
+                        -- Replace the color picker section in AddToggle (around line 441-615)
+-- This goes right after the toggle functionality, before AddSlider
 
 local colorPicker = nil
 if options.HasColorPicker then
@@ -533,13 +533,13 @@ if options.HasColorPicker then
     windowStroke.Thickness = 1.5
     windowStroke.Parent = colorPickerWindow
     
-    -- Header bar (FIXED)
+    -- Header bar
     local headerBar = Instance.new("Frame")
     headerBar.Name = "HeaderBar"
     headerBar.Size = UDim2.new(1, 0, 0, 8)
     headerBar.Position = UDim2.new(0, 0, 0, 0)
-    headerBar.Parent = colorPickerWindow  -- FIXED: was "Parnet"
-    headerBar.BackgroundColor3 = options.DefaultColor  -- FIXED: was "DefaultColor"
+    headerBar.Parent = colorPickerWindow
+    headerBar.BackgroundColor3 = options.DefaultColor
     headerBar.BorderSizePixel = 0
     headerBar.ZIndex = 101
     
@@ -845,6 +845,29 @@ if options.HasColorPicker then
             colorPickerScreenGui:Destroy()
         end
     }
+end
+
+-- After initializing the toggle
+if toggled then
+    updateToggle()
+end
+
+local element = {
+    Type = "Toggle",
+    Frame = ToggleFrame,
+    SetValue = function(newValue)
+        toggled = newValue
+        updateToggle()
+    end,
+    GetValue = function()
+        return toggled
+    end,
+    ColorPicker = colorPicker
+}
+
+table.insert(self.Elements, element)
+self:UpdateSize()
+return element
 end,
                     AddSlider = function(self, id, options)
                         options = options or {}
