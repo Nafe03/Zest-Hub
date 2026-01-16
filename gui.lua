@@ -529,6 +529,11 @@ function UILibrary.new(options)
                             windowStroke.Parent = colorPickerWindow
                             
                             -- Content frame for color picker
+                            local frame21 = Instance.new("Frame")
+                            frame.Size = UDim2.new(0, 250, 0, 2)
+                            frame.Parnet = colorPickerWindow
+                            frame.BackgroundColor3 = DefaultColor
+                            
                             local colorPickerFrame = Instance.new("Frame")
                             colorPickerFrame.Name = "ColorPickerFrame"
                             colorPickerFrame.Parent = colorPickerWindow
