@@ -15,7 +15,7 @@ local function HSVtoRGB(h, s, v)
     local q = v * (1 - f * s)
     local t = v * (1 - (1 - f) * s)
     
-    local imod = i % 6
+    local imod = i % 6  -- FIXED: removed 'f' suffix
     if imod == 0 then
         r, g, b = v, t, p
     elseif imod == 1 then
