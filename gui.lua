@@ -528,11 +528,20 @@ function UILibrary.new(options)
                             windowStroke.Thickness = 1.5
                             windowStroke.Parent = colorPickerWindow
                             
-                            -- Content frame for color picker
-                            local frame = Instance.new("Frame")
-                            frame.Size = UDim2.new(0, 250, 0, 2)
-                            frame.Parnet = colorPickerWindow
-                            frame.BackgroundColor3 = DefaultColor
+                            -- Content frame for color picker (header bar)
+local frame = Instance.new("Frame")
+frame.Name = "HeaderBar"
+frame.Size = UDim2.new(1, 0, 0, 8)  -- Made taller for better visibility
+frame.Position = UDim2.new(0, 0, 0, 0)
+frame.Parent = colorPickerWindow
+frame.BackgroundColor3 = options.DefaultColor
+frame.BorderSizePixel = 0
+frame.ZIndex = 101
+
+-- Optional: Add corner radius to match window
+local headerCorner = Instance.new("UICorner")
+headerCorner.CornerRadius = UDim.new(0, 4)
+headerCorner.Parent = frame
                             
                             local colorPickerFrame = Instance.new("Frame")
                             colorPickerFrame.Name = "ColorPickerFrame"
