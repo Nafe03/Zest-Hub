@@ -15,7 +15,7 @@ local function HSVtoRGB(h, s, v)
     local q = v * (1 - f * s)
     local t = v * (1 - (1 - f) * s)
     
-    local imod = i % 6f
+    local imod = i % 6  -- FIXED: removed 'f' suffix
     if imod == 0 then
         r, g, b = v, t, p
     elseif imod == 1 then
@@ -366,10 +366,10 @@ function UILibrary.new(options)
                     Layout = GroupboxLayout,
                     Side = side,
                     Elements = {},
-                    AddToggle = function(self, id, options)
-                        options = options or {}
-                        options.DefaultColor = options.DefaultColor or Window.DefaultColor
-                        options.TextColor = options.TextColor or Window.TextColor
+                    AddToggle = function(self, id, toggleOptions)
+                        toggleOptions = toggleOptions or {}
+                        toggleOptions.DefaultColor = toggleOptions.DefaultColor or Window.DefaultColor
+                        toggleOptions.TextColor = toggleOptions.TextColor or Window.TextColor
                         
                         local ToggleFrame = Instance.new("Frame")
                         local ToggleButton = Instance.new("TextButton")
@@ -380,11 +380,11 @@ function UILibrary.new(options)
                         
                         -- Add color picker icon if specified
                         local ColorIcon = nil
-                        if options.HasColorPicker then
+                        if toggleOptions.HasColorPicker then
                             ColorIcon = Instance.new("TextButton")
                             ColorIcon.Name = "ColorIcon"
                             ColorIcon.Parent = ToggleFrame
-                            ColorIcon.BackgroundColor3 = options.DefaultColor or Window.DefaultColor
+                            ColorIcon.BackgroundColor3 = toggleOptions.DefaultColor or Window.DefaultColor
                             ColorIcon.AnchorPoint = Vector2.new(1, 0.5)
                             ColorIcon.Position = UDim2.new(1, 0, 0.5, 0)
                             ColorIcon.Size = UDim2.new(0, 18, 0, 18)
@@ -422,7 +422,7 @@ function UILibrary.new(options)
                         ToggleButton.Name = "Button"
                         ToggleButton.Parent = ToggleFrame
                         ToggleButton.BackgroundTransparency = 1
-                        ToggleButton.Size = UDim2.new(1, options.HasColorPicker and -28 or 0, 1, 0)
+                        ToggleButton.Size = UDim2.new(1, toggleOptions.HasColorPicker and -28 or 0, 1, 0)
                         ToggleButton.Text = ""
                         ToggleButton.AutoButtonColor = false
                     
@@ -455,20 +455,20 @@ function UILibrary.new(options)
                         ToggleText.Parent = ToggleFrame
                         ToggleText.BackgroundTransparency = 1
                         ToggleText.Position = UDim2.new(0, 24, 0, 0)
-                        ToggleText.Size = UDim2.new(1, options.HasColorPicker and -52 or -24, 1, 0)
+                        ToggleText.Size = UDim2.new(1, toggleOptions.HasColorPicker and -52 or -24, 1, 0)
                         ToggleText.Font = Enum.Font.Gotham
-                        ToggleText.Text = options.Text or id
-                        ToggleText.TextColor3 = options.TextColor
+                        ToggleText.Text = toggleOptions.Text or id
+                        ToggleText.TextColor3 = toggleOptions.TextColor
                         ToggleText.TextSize = 12
                         ToggleText.TextXAlignment = Enum.TextXAlignment.Left
                         ToggleText.TextTruncate = Enum.TextTruncate.AtEnd
                     
-                        local toggled = options.Default or false
+                        local toggled = toggleOptions.Default or false
                     
                         local function updateToggle()
                             if toggled then
-                                smoothTween(ToggleIndicator, {BackgroundColor3 = options.DefaultColor})
-                                smoothTween(ToggleStroke, {Color = options.DefaultColor})
+                                smoothTween(ToggleIndicator, {BackgroundColor3 = toggleOptions.DefaultColor})
+                                smoothTween(ToggleStroke, {Color = toggleOptions.DefaultColor})
                                 smoothTween(ToggleCheckmark, {TextTransparency = 0})
                             else
                                 smoothTween(ToggleIndicator, {BackgroundColor3 = Color3.fromRGB(35, 35, 35)})
@@ -476,8 +476,8 @@ function UILibrary.new(options)
                                 smoothTween(ToggleCheckmark, {TextTransparency = 1})
                             end
                             
-                            if options.Callback then
-                                options.Callback(toggled)
+                            if toggleOptions.Callback then
+                                toggleOptions.Callback(toggled)
                             end
                         end
                         
@@ -499,124 +499,122 @@ function UILibrary.new(options)
                             updateToggle()
                         end)
                     
-                        -- Color picker implementation (fixed version)
--- This replaces the section starting from "local colorPicker = nil" in your AddToggle function
-
-local colorPicker = nil
-if options.HasColorPicker then
-    -- Create dedicated ScreenGui for color picker
-    local colorPickerScreenGui = Instance.new("ScreenGui")
-    colorPickerScreenGui.Name = "ColorPickerGui_" .. id
-    colorPickerScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
-    colorPickerScreenGui.ResetOnSpawn = false
-    colorPickerScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    colorPickerScreenGui.DisplayOrder = 999
-    
-    -- Create main color picker window
-    local colorPickerWindow = Instance.new("Frame")
-    colorPickerWindow.Name = "ColorPickerWindow"
-    colorPickerWindow.Parent = colorPickerScreenGui
-    colorPickerWindow.BackgroundColor3 = Color3.fromRGB(5, 5, 5)
-    colorPickerWindow.BorderSizePixel = 0
-    colorPickerWindow.Position = UDim2.new(0.5, -125, 0.5, -100)
-    colorPickerWindow.Size = UDim2.new(0, 250, 0, 200)
-    colorPickerWindow.Visible = false
-    colorPickerWindow.ZIndex = 100
-    
-    local windowCorner = Instance.new("UICorner")
-    windowCorner.CornerRadius = UDim.new(0, 8)
-    windowCorner.Parent = colorPickerWindow
-    
-    local windowStroke = Instance.new("UIStroke")
-    windowStroke.Color = Color3.fromRGB(0, 0, 0)
-    windowStroke.LineJoinMode = Enum.LineJoinMode.Miter
-    windowStroke.Thickness = 1.5
-    windowStroke.Parent = colorPickerWindow
-    
-    -- Header bar (FIXED)
-    local headerBar = Instance.new("Frame")
-    headerBar.Name = "HeaderBar"
-    headerBar.Size = UDim2.new(1, 0, 0, 8)
-    headerBar.Position = UDim2.new(0, 0, 0, 0)
-    headerBar.Parent = colorPickerWindow  -- FIXED: was "Parnet"
-    headerBar.BackgroundColor3 = options.DefaultColor  -- FIXED: was "DefaultColor"
-    headerBar.BorderSizePixel = 0
-    headerBar.ZIndex = 101
-    
-    local headerCorner = Instance.new("UICorner")
-    headerCorner.CornerRadius = UDim.new(0, 8)
-    headerCorner.Parent = headerBar
-    
-    -- Content frame for color picker
-    local colorPickerFrame = Instance.new("Frame")
-    colorPickerFrame.Name = "ColorPickerFrame"
-    colorPickerFrame.Parent = colorPickerWindow
-    colorPickerFrame.BackgroundTransparency = 1
-    colorPickerFrame.Position = UDim2.new(0, 15, 0, 15)
-    colorPickerFrame.Size = UDim2.new(1, -30, 1, -30)
-    colorPickerFrame.ZIndex = 101
-    
-    -- Saturation/Value box
-    local saturationValueBox = Instance.new("Frame")
-    saturationValueBox.Name = "SaturationValueBox"
-    saturationValueBox.Parent = colorPickerFrame
-    saturationValueBox.BackgroundColor3 = Color3.new(1, 0, 0)
-    saturationValueBox.BorderSizePixel = 0
-    saturationValueBox.Position = UDim2.new(0, 0, 0, 0)
-    saturationValueBox.Size = UDim2.new(0, 180, 0, 150)
-    saturationValueBox.ZIndex = 101
-    
-    local svCorner = Instance.new("UICorner")
-    svCorner.CornerRadius = UDim.new(0, 6)
-    svCorner.Parent = saturationValueBox
-    
-    local svStroke = Instance.new("UIStroke")
-    svStroke.Color = Color3.fromRGB(60, 60, 60)
-    svStroke.Thickness = 1
-    svStroke.Parent = saturationValueBox
-    
-    -- Create overlay frame for saturation gradient
-    local svOverlay = Instance.new("Frame")
-    svOverlay.Name = "SVOverlay"
-    svOverlay.Parent = saturationValueBox
-    svOverlay.BackgroundTransparency = 0
-    svOverlay.Size = UDim2.new(1, 0, 1, 0)
-    svOverlay.ZIndex = 102
-    
-    local svOverlayCorner = Instance.new("UICorner")
-    svOverlayCorner.CornerRadius = UDim.new(0, 6)
-    svOverlayCorner.Parent = svOverlay
-    
-    local saturationGradient = Instance.new("UIGradient")
-    saturationGradient.Color = ColorSequence.new{
-        ColorSequenceKeypoint.new(0, Color3.new(1, 1, 1)),
-        ColorSequenceKeypoint.new(1, Color3.new(1, 1, 1))
-    }
-    saturationGradient.Transparency = NumberSequence.new{
-        NumberSequenceKeypoint.new(0, 0),
-        NumberSequenceKeypoint.new(1, 1)
-    }
-    saturationGradient.Parent = svOverlay
-    
-    -- Create second overlay for value gradient
-    local svOverlay2 = Instance.new("Frame")
-    svOverlay2.Name = "SVOverlay2"
-    svOverlay2.Parent = saturationValueBox
-    svOverlay2.BackgroundTransparency = 0
-    svOverlay2.BackgroundColor3 = Color3.new(0, 0, 0)
-    svOverlay2.Size = UDim2.new(1, 0, 1, 0)
-    svOverlay2.ZIndex = 103
-    
-    local svOverlay2Corner = Instance.new("UICorner")
-    svOverlay2Corner.CornerRadius = UDim.new(0, 6)
-    svOverlay2Corner.Parent = svOverlay2
-    
-    local valueGradient = Instance.new("UIGradient")
-    valueGradient.Transparency = NumberSequence.new{
-        NumberSequenceKeypoint.new(0, 1),
-        NumberSequenceKeypoint.new(1, 0)
-    }
-    valueGradient.Rotation = 90
+                        -- Color picker implementation
+                        local colorPicker = nil
+                        if toggleOptions.HasColorPicker then
+                            -- Create dedicated ScreenGui for color picker
+                            local colorPickerScreenGui = Instance.new("ScreenGui")
+                            colorPickerScreenGui.Name = "ColorPickerGui_" .. id
+                            colorPickerScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+                            colorPickerScreenGui.ResetOnSpawn = false
+                            colorPickerScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+                            colorPickerScreenGui.DisplayOrder = 999
+                            
+                            -- Create main color picker window
+                            local colorPickerWindow = Instance.new("Frame")
+                            colorPickerWindow.Name = "ColorPickerWindow"
+                            colorPickerWindow.Parent = colorPickerScreenGui
+                            colorPickerWindow.BackgroundColor3 = Color3.fromRGB(5, 5, 5)
+                            colorPickerWindow.BorderSizePixel = 0
+                            colorPickerWindow.Position = UDim2.new(0.5, -125, 0.5, -100)
+                            colorPickerWindow.Size = UDim2.new(0, 250, 0, 200)
+                            colorPickerWindow.Visible = false
+                            colorPickerWindow.ZIndex = 100
+                            
+                            local windowCorner = Instance.new("UICorner")
+                            windowCorner.CornerRadius = UDim.new(0, 8)
+                            windowCorner.Parent = colorPickerWindow
+                            
+                            local windowStroke = Instance.new("UIStroke")
+                            windowStroke.Color = Color3.fromRGB(0, 0, 0)
+                            windowStroke.LineJoinMode = Enum.LineJoinMode.Miter
+                            windowStroke.Thickness = 1.5
+                            windowStroke.Parent = colorPickerWindow
+                            
+                            -- Header bar
+                            local headerBar = Instance.new("Frame")
+                            headerBar.Name = "HeaderBar"
+                            headerBar.Size = UDim2.new(1, 0, 0, 8)
+                            headerBar.Position = UDim2.new(0, 0, 0, 0)
+                            headerBar.Parent = colorPickerWindow
+                            headerBar.BackgroundColor3 = toggleOptions.DefaultColor
+                            headerBar.BorderSizePixel = 0
+                            headerBar.ZIndex = 101
+                            
+                            local headerCorner = Instance.new("UICorner")
+                            headerCorner.CornerRadius = UDim.new(0, 8)
+                            headerCorner.Parent = headerBar
+                            
+                            -- Content frame for color picker
+                            local colorPickerFrame = Instance.new("Frame")
+                            colorPickerFrame.Name = "ColorPickerFrame"
+                            colorPickerFrame.Parent = colorPickerWindow
+                            colorPickerFrame.BackgroundTransparency = 1
+                            colorPickerFrame.Position = UDim2.new(0, 15, 0, 15)
+                            colorPickerFrame.Size = UDim2.new(1, -30, 1, -30)
+                            colorPickerFrame.ZIndex = 101
+                            
+                            -- Saturation/Value box
+                            local saturationValueBox = Instance.new("Frame")
+                            saturationValueBox.Name = "SaturationValueBox"
+                            saturationValueBox.Parent = colorPickerFrame
+                            saturationValueBox.BackgroundColor3 = Color3.new(1, 0, 0)
+                            saturationValueBox.BorderSizePixel = 0
+                            saturationValueBox.Position = UDim2.new(0, 0, 0, 0)
+                            saturationValueBox.Size = UDim2.new(0, 180, 0, 150)
+                            saturationValueBox.ZIndex = 101
+                            
+                            local svCorner = Instance.new("UICorner")
+                            svCorner.CornerRadius = UDim.new(0, 6)
+                            svCorner.Parent = saturationValueBox
+                            
+                            local svStroke = Instance.new("UIStroke")
+                            svStroke.Color = Color3.fromRGB(60, 60, 60)
+                            svStroke.Thickness = 1
+                            svStroke.Parent = saturationValueBox
+                            
+                            -- Create overlay frame for saturation gradient
+                            local svOverlay = Instance.new("Frame")
+                            svOverlay.Name = "SVOverlay"
+                            svOverlay.Parent = saturationValueBox
+                            svOverlay.BackgroundTransparency = 0
+                            svOverlay.Size = UDim2.new(1, 0, 1, 0)
+                            svOverlay.ZIndex = 102
+                            
+                            local svOverlayCorner = Instance.new("UICorner")
+                            svOverlayCorner.CornerRadius = UDim.new(0, 6)
+                            svOverlayCorner.Parent = svOverlay
+                            
+                            local saturationGradient = Instance.new("UIGradient")
+                            saturationGradient.Color = ColorSequence.new{
+                                ColorSequenceKeypoint.new(0, Color3.new(1, 1, 1)),
+                                ColorSequenceKeypoint.new(1, Color3.new(1, 1, 1))
+                            }
+                            saturationGradient.Transparency = NumberSequence.new{
+                                NumberSequenceKeypoint.new(0, 0),
+                                NumberSequenceKeypoint.new(1, 1)
+                            }
+                            saturationGradient.Parent = svOverlay
+                            
+                            -- Create second overlay for value gradient
+                            local svOverlay2 = Instance.new("Frame")
+                            svOverlay2.Name = "SVOverlay2"
+                            svOverlay2.Parent = saturationValueBox
+                            svOverlay2.BackgroundTransparency = 0
+                            svOverlay2.BackgroundColor3 = Color3.new(0, 0, 0)
+                            svOverlay2.Size = UDim2.new(1, 0, 1, 0)
+                            svOverlay2.ZIndex = 103
+                            
+                            local svOverlay2Corner = Instance.new("UICorner")
+                            svOverlay2Corner.CornerRadius = UDim.new(0, 6)
+                            svOverlay2Corner.Parent = svOverlay2
+                            
+                            local valueGradient = Instance.new("UIGradient")
+                            valueGradient.Transparency = NumberSequence.new{
+                                NumberSequenceKeypoint.new(0, 1),
+                                NumberSequenceKeypoint.new(1, 0)
+                            }
+                            valueGraient.Rotation = 90
     valueGradient.Parent = svOverlay2
     
     local saturationValueButton = Instance.new("TextButton")
