@@ -532,7 +532,7 @@ function UILibrary.new(options)
                             local frame = Instance.new("Frame")
                             frame.Size = UDim2.new(0, 250, 0, 2)
                             frame.Parent = colorPickerWindow
-                            frame.BackgroundColor3 = DefaultColor
+                            frame.BackgroundColor3 = Color3.fromRGB(165, 127, 159)
                             
                             local colorPickerFrame = Instance.new("Frame")
                             colorPickerFrame.Name = "ColorPickerFrame"
