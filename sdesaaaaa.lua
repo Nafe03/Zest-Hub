@@ -1255,7 +1255,7 @@ function UILibrary.new(options)
     Label.Name = "Label"
     Label.Parent = LabelFrame
     Label.BackgroundTransparency = 1
-    Label.Size = UDim2.new(1, 0, 1, 0)
+    Label.Size = UDim2.new(1, options.HasColorPicker and -28 or 0, 1, 0)
     Label.Font = Enum.Font.Gotham
     Label.Text = text or "Label"
     Label.TextColor3 = options.TextColor
@@ -1270,8 +1270,8 @@ function UILibrary.new(options)
         Type = "Label",
         Frame = LabelFrame,
         Label = Label,
-        SetText = function(text)
-            Label.Text = text
+        SetText = function(newText)
+            Label.Text = newText
         end,
         AddColorPicker = function(id, pickerOptions)
             pickerOptions = pickerOptions or {}
@@ -1299,6 +1299,9 @@ function UILibrary.new(options)
             colorStroke.Thickness = 1.5
             colorStroke.Parent = ColorIcon
             
+            -- Update label size to accommodate color picker
+            Label.Size = UDim2.new(1, -28, 1, 0)
+            
             -- Hover effect
             ColorIcon.MouseEnter:Connect(function()
                 smoothTween(colorStroke, {Thickness = 2})
@@ -1311,7 +1314,7 @@ function UILibrary.new(options)
             
             -- Create dedicated ScreenGui for color picker
             local colorPickerScreenGui = Instance.new("ScreenGui")
-            colorPickerScreenGui.Name = "ColorPickerGui_" .. id
+            colorPickerScreenGui.Name = "ColorPickerGui_" .. (id or "Label")
             colorPickerScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
             colorPickerScreenGui.ResetOnSpawn = false
             colorPickerScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
@@ -1334,11 +1337,12 @@ function UILibrary.new(options)
             windowStroke.Thickness = 1.5
             windowStroke.Parent = colorPickerWindow
             
-            -- Content frame for color picker
-            local frame = Instance.new("Frame")
-            frame.Size = UDim2.new(0, 250, 0, 2)
-            frame.Parent = colorPickerWindow
-            frame.BackgroundColor3 = Color3.fromRGB(165, 127, 159)
+            -- Title bar
+            local titleFrame = Instance.new("Frame")
+            titleFrame.Size = UDim2.new(1, 0, 0, 2)
+            titleFrame.Parent = colorPickerWindow
+            titleFrame.BackgroundColor3 = Color3.fromRGB(165, 127, 159)
+            titleFrame.BorderSizePixel = 0
             
             local colorPickerFrame = Instance.new("Frame")
             colorPickerFrame.Name = "ColorPickerFrame"
@@ -1347,9 +1351,6 @@ function UILibrary.new(options)
             colorPickerFrame.Position = UDim2.new(0, 15, 0, 15)
             colorPickerFrame.Size = UDim2.new(1, -30, 1, -30)
             colorPickerFrame.ZIndex = 101
-            
-            -- [Rest of the color picker implementation - same as in AddToggle]
-            -- I'll include the complete color picker code below
             
             -- Saturation/Value box
             local saturationValueBox = Instance.new("Frame")
@@ -1376,6 +1377,7 @@ function UILibrary.new(options)
             svOverlay.BackgroundTransparency = 0
             svOverlay.Size = UDim2.new(1, 0, 1, 0)
             svOverlay.ZIndex = 102
+            svOverlay.BorderSizePixel = 0
             
             local saturationGradient = Instance.new("UIGradient")
             saturationGradient.Color = ColorSequence.new{
@@ -1395,6 +1397,7 @@ function UILibrary.new(options)
             svOverlay2.BackgroundColor3 = Color3.new(0, 0, 0)
             svOverlay2.Size = UDim2.new(1, 0, 1, 0)
             svOverlay2.ZIndex = 103
+            svOverlay2.BorderSizePixel = 0
             
             local valueGradient = Instance.new("UIGradient")
             valueGradient.Transparency = NumberSequence.new{
@@ -1504,7 +1507,9 @@ function UILibrary.new(options)
                 updating = false
                 
                 if pickerOptions.Callback then
-                    pickerOptions.Callback(currentColor)
+                    pcall(function()
+                        pickerOptions.Callback(currentColor)
+                    end)
                 end
             end
             
@@ -1603,14 +1608,32 @@ function UILibrary.new(options)
                 end
             end)
             
-            return {
+            -- Return color picker object
+            local colorPicker = {
                 SetColor = function(color)
                     updateFromRGB(color)
                 end,
                 GetColor = function()
                     return currentColor
+                end,
+                Show = function()
+                    colorPickerWindow.Visible = true
+                end,
+                Hide = function()
+                    colorPickerWindow.Visible = false
+                end,
+                Destroy = function()
+                    if clickOutsideConnection then
+                        clickOutsideConnection:Disconnect()
+                    end
+                    colorPickerScreenGui:Destroy()
                 end
             }
+            
+            -- Store color picker in element
+            element.ColorPicker = colorPicker
+            
+            return colorPicker
         end
     }
 
