@@ -1238,7 +1238,10 @@ function UILibrary.new(options)
                         self:UpdateSize()
                         return element
                     end,
-                    AddLabel = function(self, text, options)
+                    -- COMPLETE FIXED AddLabel FUNCTION
+-- This replaces the AddLabel function in your UI library
+
+AddLabel = function(self, text, options)
     options = options or {}
     options.DefaultColor = options.DefaultColor or Window.DefaultColor
     options.TextColor = options.TextColor or Window.TextColor
@@ -1255,7 +1258,7 @@ function UILibrary.new(options)
     Label.Name = "Label"
     Label.Parent = LabelFrame
     Label.BackgroundTransparency = 1
-    Label.Size = UDim2.new(1, options.HasColorPicker and -28 or 0, 1, 0)
+    Label.Size = UDim2.new(1, 0, 1, 0)
     Label.Font = Enum.Font.Gotham
     Label.Text = text or "Label"
     Label.TextColor3 = options.TextColor
@@ -1273,7 +1276,8 @@ function UILibrary.new(options)
         SetText = function(newText)
             Label.Text = newText
         end,
-        AddColorPicker = function(id, pickerOptions)
+        -- THE KEY FIX: AddColorPicker must be a METHOD of the element
+        AddColorPicker = function(elementSelf, id, pickerOptions)
             pickerOptions = pickerOptions or {}
             pickerOptions.DefaultColor = pickerOptions.DefaultColor or Window.DefaultColor
             
@@ -1639,6 +1643,8 @@ function UILibrary.new(options)
 
     table.insert(self.Elements, element)
     self:UpdateSize()
+    
+    -- CRITICAL FIX: Return the element so chaining works!
     return element
 end,
                     AddTextBox = function(self, id, options)
