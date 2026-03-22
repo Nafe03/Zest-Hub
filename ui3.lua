@@ -699,8 +699,6 @@ function UILibrary.new(options)
                                     smoothTween(ColorIcon, {BackgroundColor3 = currentColor}, 0.15)
                                 end
 
-                                smoothTween(svOverlay, {BorderColor3 = currentColor}, 0.15)
-                                smoothTween(svOverlay2, {BorderColor3 = currentColor}, 0.15)
                                 updating = false
                                 
                                 if options.ColorCallback then
@@ -865,14 +863,14 @@ function UILibrary.new(options)
                         SliderFrame.Name = id .. "Slider"
                         SliderFrame.Parent = GroupboxContent
                         SliderFrame.BackgroundTransparency = 1
-                        SliderFrame.Size = UDim2.new(1.2, 0, 0, 40)
+                        SliderFrame.Size = UDim2.new(1, 0, 0, 40)
                         SliderFrame.LayoutOrder = #self.Elements + 1
 
                         SliderText.Name = "Text"
                         SliderText.Parent = SliderFrame
                         SliderText.BackgroundTransparency = 1
                         SliderText.Position = UDim2.new(0, 0, 0, 0)
-                        SliderText.Size = UDim2.new(1, -35, 0, 20)
+                        SliderText.Size = UDim2.new(1, -50, 0, 20)
                         SliderText.Font = Enum.Font.Gotham
                         SliderText.Text = options.Text or id
                         SliderText.TextColor3 = options.TextColor
@@ -884,7 +882,7 @@ function UILibrary.new(options)
                         SliderBackground.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
                         SliderBackground.BorderSizePixel = 0
                         SliderBackground.Position = UDim2.new(0, 0, 0, 24)
-                        SliderBackground.Size = UDim2.new(1, -35, 0, 8)
+                        SliderBackground.Size = UDim2.new(1, -50, 0, 8)
 
                         SliderBackgroundCorner.CornerRadius = UDim.new(1, 0)
                         SliderBackgroundCorner.Parent = SliderBackground
@@ -913,8 +911,8 @@ function UILibrary.new(options)
                         ValueLabel.Name = "Value"
                         ValueLabel.Parent = SliderFrame
                         ValueLabel.BackgroundTransparency = 1
-                        ValueLabel.Position = UDim2.new(1, -60, 0, 0)
-                        ValueLabel.Size = UDim2.new(0, 30, 0, 20)
+                        ValueLabel.Position = UDim2.new(1, -46, 0, 0)
+                        ValueLabel.Size = UDim2.new(0, 44, 0, 20)
                         ValueLabel.Font = Enum.Font.GothamBold
                         ValueLabel.Text = tostring(options.Default or options.Min or 0)
                         ValueLabel.TextColor3 = options.DefaultColor
@@ -992,6 +990,7 @@ function UILibrary.new(options)
                         options = options or {}
                         options.DefaultColor = options.DefaultColor or Window.DefaultColor
                         options.TextColor = options.TextColor or Window.TextColor
+                        options.Values = options.Values or {}
                         
                         local DropdownFrame = Instance.new("Frame")
                         local DropdownText = Instance.new("TextLabel")
@@ -1027,7 +1026,7 @@ function UILibrary.new(options)
                         DropdownButton.Position = UDim2.new(0, 0, 0, 24)
                         DropdownButton.Size = UDim2.new(1, 0, 0, 20)
                         DropdownButton.Font = Enum.Font.Gotham
-                        DropdownButton.Text = "  " .. (options.Values[1] or "Select...")
+                        DropdownButton.Text = "  " .. (options.Default or options.Values[1] or "Select...")
                         DropdownButton.TextColor3 = options.TextColor
                         DropdownButton.TextSize = 11
                         DropdownButton.TextXAlignment = Enum.TextXAlignment.Left
@@ -1083,7 +1082,7 @@ function UILibrary.new(options)
                         DropdownPadding.PaddingRight = UDim.new(0, 4)
 
                         local isOpen = false
-                        local selectedValue = options.Values[1] or ""
+                        local selectedValue = options.Default or options.Values[1] or ""
 
                         for i, option in ipairs(options.Values) do
                             local OptionButton = Instance.new("TextButton")
@@ -1712,6 +1711,263 @@ function UILibrary.new(options)
                         self:UpdateSize()
                         return element
                     end,
+                    AddKeyPicker = function(self, id, options)
+                        options = options or {}
+                        options.DefaultColor = options.DefaultColor or Window.DefaultColor
+                        options.TextColor = options.TextColor or Window.TextColor
+
+                        -- Key display names (Roblox KeyCode names → readable labels)
+                        local keyNames = {
+                            [Enum.KeyCode.LeftAlt]    = "L-Alt",
+                            [Enum.KeyCode.RightAlt]   = "R-Alt",
+                            [Enum.KeyCode.LeftControl] = "L-Ctrl",
+                            [Enum.KeyCode.RightControl]= "R-Ctrl",
+                            [Enum.KeyCode.LeftShift]  = "L-Shift",
+                            [Enum.KeyCode.RightShift] = "R-Shift",
+                            [Enum.KeyCode.Tab]        = "Tab",
+                            [Enum.KeyCode.CapsLock]   = "Caps",
+                            [Enum.KeyCode.Backspace]  = "Bksp",
+                            [Enum.KeyCode.Return]     = "Enter",
+                            [Enum.KeyCode.Space]      = "Space",
+                            [Enum.KeyCode.Delete]     = "Del",
+                            [Enum.KeyCode.Insert]     = "Ins",
+                            [Enum.KeyCode.Home]       = "Home",
+                            [Enum.KeyCode.End]        = "End",
+                            [Enum.KeyCode.PageUp]     = "PgUp",
+                            [Enum.KeyCode.PageDown]   = "PgDn",
+                            [Enum.KeyCode.F1]="F1",[Enum.KeyCode.F2]="F2",[Enum.KeyCode.F3]="F3",
+                            [Enum.KeyCode.F4]="F4",[Enum.KeyCode.F5]="F5",[Enum.KeyCode.F6]="F6",
+                            [Enum.KeyCode.F7]="F7",[Enum.KeyCode.F8]="F8",[Enum.KeyCode.F9]="F9",
+                            [Enum.KeyCode.F10]="F10",[Enum.KeyCode.F11]="F11",[Enum.KeyCode.F12]="F12",
+                        }
+
+                        local function getKeyName(keyCode)
+                            return keyNames[keyCode] or tostring(keyCode):match("KeyCode%.(.+)") or "?"
+                        end
+
+                        -- State
+                        local currentKey = options.Default or Enum.KeyCode.RightShift
+                        local listening = false
+                        local inputConn = nil
+
+                        -- Build UI
+                        local KeyPickerFrame = Instance.new("Frame")
+                        local KeyPickerText  = Instance.new("TextLabel")
+                        local KeyPickerBtn   = Instance.new("TextButton")
+                        local KeyPickerBtnCorner = Instance.new("UICorner")
+                        local KeyPickerBtnStroke = Instance.new("UIStroke")
+                        local KeyLabel       = Instance.new("TextLabel")
+
+                        KeyPickerFrame.Name = id .. "KeyPicker"
+                        KeyPickerFrame.Parent = GroupboxContent
+                        KeyPickerFrame.BackgroundTransparency = 1
+                        KeyPickerFrame.Size = UDim2.new(1, 0, 0, 38)
+                        KeyPickerFrame.LayoutOrder = #self.Elements + 1
+
+                        -- Label (left side)
+                        KeyPickerText.Name = "Text"
+                        KeyPickerText.Parent = KeyPickerFrame
+                        KeyPickerText.BackgroundTransparency = 1
+                        KeyPickerText.Position = UDim2.new(0, 0, 0, 0)
+                        KeyPickerText.Size = UDim2.new(1, -70, 0, 18)
+                        KeyPickerText.Font = Enum.Font.Gotham
+                        KeyPickerText.Text = options.Text or id
+                        KeyPickerText.TextColor3 = options.TextColor
+                        KeyPickerText.TextSize = 12
+                        KeyPickerText.TextXAlignment = Enum.TextXAlignment.Left
+
+                        -- Keybind button (right side)
+                        KeyPickerBtn.Name = "KeyBtn"
+                        KeyPickerBtn.Parent = KeyPickerFrame
+                        KeyPickerBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+                        KeyPickerBtn.BorderSizePixel = 0
+                        KeyPickerBtn.AnchorPoint = Vector2.new(1, 0)
+                        KeyPickerBtn.Position = UDim2.new(1, 0, 0, 0)
+                        KeyPickerBtn.Size = UDim2.new(0, 64, 0, 18)
+                        KeyPickerBtn.Text = ""
+                        KeyPickerBtn.AutoButtonColor = false
+                        KeyPickerBtn.ClipsDescendants = true
+
+                        KeyPickerBtnCorner.CornerRadius = UDim.new(0, 4)
+                        KeyPickerBtnCorner.Parent = KeyPickerBtn
+
+                        KeyPickerBtnStroke.Color = Color3.fromRGB(55, 55, 55)
+                        KeyPickerBtnStroke.Thickness = 1
+                        KeyPickerBtnStroke.Parent = KeyPickerBtn
+
+                        -- Key name label inside the button
+                        KeyLabel.Name = "KeyLabel"
+                        KeyLabel.Parent = KeyPickerBtn
+                        KeyLabel.BackgroundTransparency = 1
+                        KeyLabel.Size = UDim2.new(1, 0, 1, 0)
+                        KeyLabel.Font = Enum.Font.GothamBold
+                        KeyLabel.Text = "[" .. getKeyName(currentKey) .. "]"
+                        KeyLabel.TextColor3 = options.DefaultColor
+                        KeyLabel.TextSize = 11
+
+                        -- Mode label below (Hold / Toggle / Always)
+                        local ModeLabel = Instance.new("TextLabel")
+                        ModeLabel.Name = "ModeLabel"
+                        ModeLabel.Parent = KeyPickerFrame
+                        ModeLabel.BackgroundTransparency = 1
+                        ModeLabel.Position = UDim2.new(0, 0, 0, 20)
+                        ModeLabel.Size = UDim2.new(1, 0, 0, 14)
+                        ModeLabel.Font = Enum.Font.Gotham
+                        ModeLabel.TextSize = 10
+                        ModeLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+                        local modes = {"Hold", "Toggle", "Always"}
+                        local modeIndex = 1
+                        for i, m in ipairs(modes) do
+                            if m == options.Mode then modeIndex = i break end
+                        end
+                        local currentMode = modes[modeIndex]
+
+                        local function updateModeLabel()
+                            ModeLabel.Text = "Mode: " .. currentMode
+                            ModeLabel.TextColor3 = Color3.fromRGB(130, 130, 130)
+                        end
+                        updateModeLabel()
+
+                        -- Active state tracking
+                        local isActive = false
+                        local keyDownConn = nil
+                        local keyUpConn = nil
+
+                        local function stopListening()
+                            if inputConn then inputConn:Disconnect() inputConn = nil end
+                            listening = false
+                            KeyLabel.Text = "[" .. getKeyName(currentKey) .. "]"
+                            KeyLabel.TextColor3 = options.DefaultColor
+                            smoothTween(KeyPickerBtnStroke, {Color = Color3.fromRGB(55, 55, 55)}, 0.15)
+                        end
+
+                        local function startListening()
+                            listening = true
+                            KeyLabel.Text = "..."
+                            KeyLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
+                            smoothTween(KeyPickerBtnStroke, {Color = options.DefaultColor}, 0.15)
+
+                            inputConn = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+                                if gameProcessed then return end
+                                if input.UserInputType == Enum.UserInputType.Keyboard then
+                                    -- ESC cancels
+                                    if input.KeyCode == Enum.KeyCode.Escape then
+                                        stopListening()
+                                        return
+                                    end
+                                    currentKey = input.KeyCode
+                                    stopListening()
+                                    -- Re-bind hold/toggle logic
+                                    if keyDownConn then keyDownConn:Disconnect() end
+                                    if keyUpConn then keyUpConn:Disconnect() end
+                                    bindKeyActions()
+                                end
+                            end)
+                        end
+
+                        -- Bind hold / toggle / always logic
+                        function bindKeyActions()
+                            if currentMode == "Always" then
+                                isActive = true
+                                if options.Callback then options.Callback(true) end
+                                return
+                            end
+
+                            keyDownConn = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+                                if gameProcessed then return end
+                                if input.KeyCode == currentKey then
+                                    if currentMode == "Hold" then
+                                        isActive = true
+                                        if options.Callback then options.Callback(true) end
+                                    elseif currentMode == "Toggle" then
+                                        isActive = not isActive
+                                        if options.Callback then options.Callback(isActive) end
+                                    end
+                                end
+                            end)
+
+                            if currentMode == "Hold" then
+                                keyUpConn = UserInputService.InputEnded:Connect(function(input)
+                                    if input.KeyCode == currentKey then
+                                        isActive = false
+                                        if options.Callback then options.Callback(false) end
+                                    end
+                                end)
+                            end
+                        end
+
+                        -- Initial bind
+                        bindKeyActions()
+
+                        -- Click to listen
+                        KeyPickerBtn.MouseButton1Click:Connect(function()
+                            if listening then
+                                stopListening()
+                            else
+                                startListening()
+                            end
+                        end)
+
+                        -- Right-click cycles mode
+                        KeyPickerBtn.MouseButton2Click:Connect(function()
+                            modeIndex = (modeIndex % #modes) + 1
+                            currentMode = modes[modeIndex]
+                            updateModeLabel()
+                            if keyDownConn then keyDownConn:Disconnect() end
+                            if keyUpConn then keyUpConn:Disconnect() end
+                            isActive = false
+                            bindKeyActions()
+                        end)
+
+                        -- Hover effects
+                        KeyPickerBtn.MouseEnter:Connect(function()
+                            if not listening then
+                                smoothTween(KeyPickerBtn, {BackgroundColor3 = Color3.fromRGB(38, 38, 38)}, 0.12)
+                            end
+                        end)
+                        KeyPickerBtn.MouseLeave:Connect(function()
+                            if not listening then
+                                smoothTween(KeyPickerBtn, {BackgroundColor3 = Color3.fromRGB(30, 30, 30)}, 0.12)
+                            end
+                        end)
+
+                        local element = {
+                            Type = "KeyPicker",
+                            Frame = KeyPickerFrame,
+                            GetValue = function()
+                                return currentKey
+                            end,
+                            IsActive = function()
+                                return isActive
+                            end,
+                            GetMode = function()
+                                return currentMode
+                            end,
+                            SetKey = function(keyCode)
+                                currentKey = keyCode
+                                KeyLabel.Text = "[" .. getKeyName(keyCode) .. "]"
+                                if keyDownConn then keyDownConn:Disconnect() end
+                                if keyUpConn then keyUpConn:Disconnect() end
+                                bindKeyActions()
+                            end,
+                            SetMode = function(mode)
+                                for i, m in ipairs(modes) do
+                                    if m == mode then modeIndex = i break end
+                                end
+                                currentMode = modes[modeIndex]
+                                updateModeLabel()
+                                if keyDownConn then keyDownConn:Disconnect() end
+                                if keyUpConn then keyUpConn:Disconnect() end
+                                isActive = false
+                                bindKeyActions()
+                            end,
+                        }
+
+                        table.insert(self.Elements, element)
+                        self:UpdateSize()
+                        return element
+                    end,
                     UpdateSize = function(self)
                         local totalHeight = 40
                         for _, element in ipairs(self.Elements) do
@@ -1768,16 +2024,20 @@ function UILibrary.new(options)
     end
 
     function Window:Destroy()
-        smoothTween(MainBackGround, {Size = UDim2.new(0, 0, 0, 0)}, 0.3)
-        task.wait(0.3)
-        ScreenGui:Destroy()
+        task.spawn(function()
+            smoothTween(MainBackGround, {Size = UDim2.new(0, 0, 0, 0)}, 0.3)
+            task.wait(0.3)
+            ScreenGui:Destroy()
+        end)
     end
 
     function Window:ToggleVisibility()
         if ScreenGui.Enabled then
-            smoothTween(MainBackGround, {Size = UDim2.new(0, 0, 0, 0)}, 0.2)
-            task.wait(0.2)
-            ScreenGui.Enabled = false
+            task.spawn(function()
+                smoothTween(MainBackGround, {Size = UDim2.new(0, 0, 0, 0)}, 0.2)
+                task.wait(0.2)
+                ScreenGui.Enabled = false
+            end)
         else
             ScreenGui.Enabled = true
             MainBackGround.Size = UDim2.new(0, 0, 0, 0)
@@ -1820,7 +2080,16 @@ function UILibrary.new(options)
         smoothTween(MainBackGround, {Position = position}, dragSpeed)
     end
 
-    MainBackGround.InputBegan:Connect(function(input)
+    -- Drag handle: only the TabHolder (left sidebar) acts as the drag region
+    local DragHandle = Instance.new("Frame")
+    DragHandle.Name = "DragHandle"
+    DragHandle.Parent = MainBackGround
+    DragHandle.BackgroundTransparency = 1
+    DragHandle.Position = UDim2.new(0, 0, 0, 0)
+    DragHandle.Size = UDim2.new(0, 130, 0, options.Size.Y.Offset)
+    DragHandle.ZIndex = 0
+
+    DragHandle.InputBegan:Connect(function(input)
         if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
             dragToggle = true
             dragStart = input.Position
