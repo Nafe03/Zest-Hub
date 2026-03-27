@@ -90,11 +90,16 @@ LPH_JIT_MAX(function()
         return ok and hp or 100, 100
     end)
 
-    -- NO RECOIL
+    -- RECOIL MULTIPLIER  (100 = original / 0 = none)
     local applyImpulse = recoil.applyImpulse
-    function recoil.applyImpulse(...)
-        if getgenv().ZH_NoRecoil then return end
-        return applyImpulse(...)
+    function recoil.applyImpulse(spring, x, y, ...)
+        local factor = (getgenv().ZH_RecoilMultiplier ~= nil) and (getgenv().ZH_RecoilMultiplier / 100) or 1
+        if factor <= 0 then return end
+        if factor >= 1 then return applyImpulse(spring, x, y, ...) end
+        return applyImpulse(spring,
+            (type(x) == "number") and x * factor or x,
+            (type(y) == "number") and y * factor or y,
+            ...)
     end
 
     -- NO SPREAD + SMALL CROSSHAIR
@@ -277,7 +282,7 @@ if playerDataUtils then
     end
 end
 
-getgenv().ZH_NoRecoil       = false
+getgenv().ZH_RecoilMultiplier = 100   -- 100 = full / 0 = none
 getgenv().ZH_NoSpread       = false
 getgenv().ZH_NoWalkSway     = false
 getgenv().ZH_NoGunSway      = false
@@ -330,6 +335,13 @@ getgenv().Light = {
     FogEnabled     = false,
 }
 getgenv().Visual = { FieldOfView = camera.FieldOfView }
+getgenv().WorldExtra = {
+    FullBright    = false,
+    RainbowTime   = false,
+    RainbowSpeed  = 0.5,
+    NoBlur        = false,
+    NoCameraBob   = false,
+}
 
 -- ==============================================================
 --  PLAYER HIGHLIGHTS
@@ -1209,17 +1221,163 @@ end
 _G.ESP = ESP
 
 -- ==============================================================
+--  ARM / GUN CHAMS  (hooks camera.ChildAdded like source)
+--  Arms  = Model that contains a child named "Arm"
+--  Guns  = Model that does NOT contain "Arm"
+-- ==============================================================
+getgenv().ZH_ArmChams = {
+    Enabled      = false,
+    Color        = Color3.fromRGB(255, 100, 50),
+    Material     = "Neon",
+    Transparency = 0,
+}
+getgenv().ZH_GunChams = {
+    Enabled      = false,
+    Color        = Color3.fromRGB(50, 200, 255),
+    Material     = "Neon",
+    Transparency = 0,
+}
+
+local chamMaterialEnum = {
+    Neon        = Enum.Material.Neon,
+    ForceField  = Enum.Material.ForceField,
+    Glass       = Enum.Material.Glass,
+    SmoothPlastic = Enum.Material.SmoothPlastic,
+}
+
+local function applyChamToModel(model, cfg)
+    for _, p in model:GetDescendants() do
+        if p:IsA("BasePart") then
+            pcall(function()
+                p.Color        = cfg.Color
+                p.Material     = chamMaterialEnum[cfg.Material] or Enum.Material.Neon
+                p.Transparency = cfg.Transparency
+                p.CastShadow   = false
+            end)
+        end
+    end
+end
+
+local function removeChamFromModel(model, originals)
+    if not originals then return end
+    for _, p in model:GetDescendants() do
+        if p:IsA("BasePart") and originals[p] then
+            pcall(function()
+                p.Color        = originals[p].Color
+                p.Material     = originals[p].Material
+                p.Transparency = originals[p].Transparency
+                p.CastShadow   = originals[p].CastShadow
+            end)
+        end
+    end
+end
+
+local function snapshotModel(model)
+    local snap = {}
+    for _, p in model:GetDescendants() do
+        if p:IsA("BasePart") then
+            snap[p] = {
+                Color        = p.Color,
+                Material     = p.Material,
+                Transparency = p.Transparency,
+                CastShadow   = p.CastShadow,
+            }
+        end
+    end
+    return snap
+end
+
+local chamTracked = {}   -- [model] = {isArm, originals, connection}
+
+camera.ChildAdded:Connect(function(model)
+    if model.ClassName ~= "Model" then return end
+    task.defer(function()   -- defer so all children have loaded
+        local isArm = model:FindFirstChild("Arm") ~= nil
+        local cfg   = isArm and getgenv().ZH_ArmChams or getgenv().ZH_GunChams
+        if not cfg.Enabled then return end
+
+        local originals = snapshotModel(model)
+        applyChamToModel(model, cfg)
+
+        local conn = model:GetPropertyChangedSignal("Parent"):Connect(function()
+            if model.Parent ~= camera then
+                removeChamFromModel(model, originals)
+                if chamTracked[model] then
+                    chamTracked[model].connection:Disconnect()
+                    chamTracked[model] = nil
+                end
+            end
+        end)
+        chamTracked[model] = { isArm = isArm, originals = originals, connection = conn }
+    end)
+end)
+
+-- Exported helpers so UI callbacks can re-apply to already-loaded models
+local function refreshCameraChams()
+    for model, data in pairs(chamTracked) do
+        local cfg = data.isArm and getgenv().ZH_ArmChams or getgenv().ZH_GunChams
+        if cfg.Enabled then
+            applyChamToModel(model, cfg)
+        else
+            removeChamFromModel(model, data.originals)
+        end
+    end
+end
+getgenv().ZH_RefreshChams = refreshCameraChams
+
+-- ==============================================================
 --  LIGHTING / FOV HEARTBEAT
 -- ==============================================================
-runService.Heartbeat:Connect(function()
+runService.Heartbeat:Connect(function(dt)
     local L = getgenv().Light
-    Lighting.GlobalShadows  = L.Shadows
-    Lighting.Ambient        = L.Ambient
-    Lighting.OutdoorAmbient = L.OutdoorAmbient
-    Lighting.ClockTime      = L.ClockTime
-    Lighting.Brightness     = L.Brightness
+    local WE = getgenv().WorldExtra
+
+    -- FullBright overrides ambient + brightness
+    if WE and WE.FullBright then
+        Lighting.GlobalShadows  = false
+        Lighting.Ambient        = Color3.fromRGB(255, 255, 255)
+        Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
+        Lighting.Brightness     = 10
+    else
+        Lighting.GlobalShadows  = L.Shadows
+        Lighting.Ambient        = L.Ambient
+        Lighting.OutdoorAmbient = L.OutdoorAmbient
+        Lighting.Brightness     = L.Brightness
+    end
+
+    -- Rainbow time of day
+    if WE and WE.RainbowTime then
+        L.ClockTime = (L.ClockTime + dt * (WE.RainbowSpeed or 0.5)) % 24
+    end
+
+    Lighting.ClockTime = L.ClockTime
+
     if L.FogEnabled then
         Lighting.FogEnd = L.FogEnd; Lighting.FogStart = 0
+    end
+
+    -- NoBlur: remove blur/glow effects added by the game
+    if WE and WE.NoBlur then
+        for _, fx in Lighting:GetChildren() do
+            if fx:IsA("BlurEffect") or fx:IsA("DepthOfFieldEffect") then
+                pcall(function() fx.Enabled = false end)
+            end
+        end
+    end
+
+    -- NoCameraBob: zero out character speed on camera step (handled by existing cameraObject hook)
+    -- We expose the flag; actual suppression happens in the cameraObject.step hook via charInterface
+    if WE and WE.NoCameraBob and charInterface and charInterface.getCharacterObject then
+        pcall(function()
+            local co = charInterface.getCharacterObject()
+            if co then
+                local old = co._speed
+                if old and old ~= 0 then
+                    co._speed = 0
+                    task.defer(function() pcall(function() co._speed = old end) end)
+                end
+            end
+        end)
     end
 end)
 
@@ -1254,8 +1412,11 @@ local GunModsGroup     = GunModsTab:AddLeftGroupbox("Gun Mods")
 local GunModsGroup2    = GunModsTab:AddRightGroupbox("Advanced")
 local WorldGroupbox    = WorldTab:AddLeftGroupbox("Lighting")
 local WorldGroupbox2   = WorldTab:AddRightGroupbox("Environment")
+local WorldGroupbox3   = WorldTab:AddLeftGroupbox("World Extras")
 local WeaponChamsGroup = VisualsTab:AddLeftGroupbox("Weapon Chams")
 local HighlightGroup   = VisualsTab:AddRightGroupbox("Player Highlights")
+local ArmChamsGroup    = VisualsTab:AddLeftGroupbox("Arm Chams")
+local GunChamsGroup    = VisualsTab:AddRightGroupbox("Gun Chams")
 local BulletTracerGroup = BulletTab:AddLeftGroupbox("Bullet Tracers")
 local SilentAimGroup    = BulletTab:AddRightGroupbox("Silent Aim")
 local HitmarkerGroup    = BulletTab:AddLeftGroupbox("Hitmarker")
@@ -1312,7 +1473,12 @@ AimbotFOVGroup:AddSlider("FOVRadius", {
 AimbotFOVGroup:AddToggle("AimbotVisCheck", {Text="Visible Check", Default=false, Callback=function(v) getgenv().ZH_Aimbot.VisCheck = v end})
 
 -- Gun Mods
-GunModsGroup:AddToggle("NoRecoil",   {Text="No Recoil",   Default=false, Callback=function(v) getgenv().ZH_NoRecoil   = v end})
+GunModsGroup:AddSlider("RecoilMult", {
+    Text    = "Recoil Multiplier",
+    Min     = 0, Max = 100, Default = 100, Rounding = 1,
+    Suffix  = "%",
+    Callback = function(v) getgenv().ZH_RecoilMultiplier = v end,
+})
 GunModsGroup:AddToggle("NoSpread",   {Text="No Spread",   Default=false, Callback=function(v) getgenv().ZH_NoSpread   = v end})
 GunModsGroup:AddToggle("NoWalkSway", {Text="No Walk Sway",Default=false, Callback=function(v) getgenv().ZH_NoWalkSway = v end})
 GunModsGroup:AddToggle("NoGunSway",  {Text="No Gun Sway", Default=false, Callback=function(v) getgenv().ZH_NoGunSway  = v end})
@@ -1453,3 +1619,5 @@ TweaksGroup:AddToggle("UnlockCamos", {
         end
     end,
 })
+
+print("[ZestHub] v6 Loaded - Toggle: RightShift")
