@@ -1414,7 +1414,7 @@ local function startEnemyChams()
             local charModel
             pcall(function()
                 if entry.isReady and not entry:isReady() then return end
-                local tp = entry:getThirdPersonObject and entry:getThirdPersonObject()
+                local tp = entry.getThirdPersonObject and entry:getThirdPersonObject()
                 if tp then
                     charModel = (tp.getCharacterModel and tp:getCharacterModel())
                              or tp._character
