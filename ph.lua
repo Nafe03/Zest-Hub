@@ -90,12 +90,16 @@ LPH_JIT_MAX(function()
         return ok and hp or 100, 100
     end)
 
-    -- RECOIL MULTIPLIER  (100 = original / 0 = none)
+    -- RECOIL MULTIPLIER  (100 % = original / 0 % = no recoil, works for every gun)
     local applyImpulse = recoil.applyImpulse
     function recoil.applyImpulse(spring, x, y, ...)
-        local factor = (getgenv().ZH_RecoilMultiplier ~= nil) and (getgenv().ZH_RecoilMultiplier / 100) or 1
-        if factor <= 0 then return end
-        if factor >= 1 then return applyImpulse(spring, x, y, ...) end
+        local pct = (getgenv().ZH_RecoilMultiplier ~= nil) and getgenv().ZH_RecoilMultiplier or 100
+        -- 0 % → block entirely (no recoil)
+        if pct <= 0 then return end
+        -- 100 % → pass through unmodified (fully original recoil for every gun)
+        if pct >= 100 then return applyImpulse(spring, x, y, ...) end
+        -- anything in between → scale x and y impulse proportionally
+        local factor = pct / 100
         return applyImpulse(spring,
             (type(x) == "number") and x * factor or x,
             (type(y) == "number") and y * factor or y,
@@ -1326,6 +1330,137 @@ end
 getgenv().ZH_RefreshChams = refreshCameraChams
 
 -- ==============================================================
+--  ENEMY CHAMS  (source-style cham.new pattern – overrides BasePart
+--  properties every RenderStepped frame so they persist through
+--  the game's own material resets)
+-- ==============================================================
+getgenv().ZH_EnemyChams = {
+    Enabled      = false,
+    Color        = Color3.fromRGB(255, 50,  50),
+    TeamColor    = Color3.fromRGB(50,  255, 50),
+    ShowTeam     = false,
+    Material     = "Neon",
+    Transparency = 0.3,
+}
+
+local enemyChamCache    = {}   -- [entry] = { parts={}, originals={}, isEnemy=bool }
+local enemyChamConn     = nil
+local chamMatLookup     = {
+    Neon          = Enum.Material.Neon,
+    ForceField    = Enum.Material.ForceField,
+    Glass         = Enum.Material.Glass,
+    SmoothPlastic = Enum.Material.SmoothPlastic,
+}
+
+local function ecCollectParts(model)
+    local parts = {}
+    for _, p in ipairs(model:GetDescendants()) do
+        if p:IsA("BasePart") and p.Name ~= "HumanoidRootPart" then
+            table.insert(parts, p)
+        end
+    end
+    return parts
+end
+
+local function ecSnapshot(parts)
+    local snap = {}
+    for _, p in ipairs(parts) do
+        snap[p] = { Color=p.Color, Material=p.Material,
+                    Transparency=p.Transparency, CastShadow=p.CastShadow }
+    end
+    return snap
+end
+
+local function ecApply(data)
+    local cfg = getgenv().ZH_EnemyChams
+    local col = data.isEnemy and cfg.Color or cfg.TeamColor
+    local mat = chamMatLookup[cfg.Material] or Enum.Material.Neon
+    for _, p in ipairs(data.parts) do
+        pcall(function()
+            if p.Transparency == 1 then return end  -- keep invisible parts invisible (like source)
+            p.Color        = col
+            p.Material     = mat
+            p.Transparency = cfg.Transparency
+            p.CastShadow   = false
+        end)
+    end
+end
+
+local function ecRestore(data)
+    for _, p in ipairs(data.parts) do
+        local orig = data.originals[p]
+        if orig then
+            pcall(function()
+                p.Color        = orig.Color
+                p.Material     = orig.Material
+                p.Transparency = orig.Transparency
+                p.CastShadow   = orig.CastShadow
+            end)
+        end
+    end
+end
+
+local function startEnemyChams()
+    if enemyChamConn then return end
+    enemyChamConn = runService.Heartbeat:Connect(function()
+        local cfg = getgenv().ZH_EnemyChams
+        if not cfg.Enabled or not replicationInterface then return end
+
+        local alive = {}
+        replicationInterface.operateOnAllEntries(function(plr, entry)
+            if plr == player then return end
+            if not entry._isEnemy and not cfg.ShowTeam then return end
+
+            local charModel
+            pcall(function()
+                if entry.isReady and not entry:isReady() then return end
+                local tp = entry:getThirdPersonObject and entry:getThirdPersonObject()
+                if tp then
+                    charModel = (tp.getCharacterModel and tp:getCharacterModel())
+                             or tp._character
+                end
+                if not charModel then
+                    local tpRaw = entry._thirdPersonObject
+                    charModel = tpRaw and tpRaw._character
+                end
+            end)
+            if not charModel then return end
+
+            alive[entry] = true
+
+            if not enemyChamCache[entry] then
+                local parts = ecCollectParts(charModel)
+                if #parts == 0 then return end
+                enemyChamCache[entry] = {
+                    parts     = parts,
+                    originals = ecSnapshot(parts),
+                    isEnemy   = entry._isEnemy,
+                }
+            end
+
+            ecApply(enemyChamCache[entry])
+        end)
+
+        -- clean up stale entries and restore their materials
+        for entry, data in pairs(enemyChamCache) do
+            if not alive[entry] then
+                ecRestore(data)
+                enemyChamCache[entry] = nil
+            end
+        end
+    end)
+end
+
+local function stopEnemyChams()
+    if enemyChamConn then enemyChamConn:Disconnect(); enemyChamConn = nil end
+    for _, data in pairs(enemyChamCache) do ecRestore(data) end
+    enemyChamCache = {}
+end
+
+getgenv().ZH_StartEnemyChams = startEnemyChams
+getgenv().ZH_StopEnemyChams  = stopEnemyChams
+
+-- ==============================================================
 --  LIGHTING / FOV HEARTBEAT
 -- ==============================================================
 runService.Heartbeat:Connect(function(dt)
@@ -1417,6 +1552,7 @@ local WeaponChamsGroup = VisualsTab:AddLeftGroupbox("Weapon Chams")
 local HighlightGroup   = VisualsTab:AddRightGroupbox("Player Highlights")
 local ArmChamsGroup    = VisualsTab:AddLeftGroupbox("Arm Chams")
 local GunChamsGroup    = VisualsTab:AddRightGroupbox("Gun Chams")
+local EnemyChamsGroup  = VisualsTab:AddLeftGroupbox("Enemy Chams")
 local BulletTracerGroup = BulletTab:AddLeftGroupbox("Bullet Tracers")
 local SilentAimGroup    = BulletTab:AddRightGroupbox("Silent Aim")
 local HitmarkerGroup    = BulletTab:AddLeftGroupbox("Hitmarker")
@@ -1487,25 +1623,54 @@ GunModsGroup2:AddToggle("NoScope",    {Text="No Sniper Scope",Default=false, Cal
 GunModsGroup2:AddToggle("InstReload", {Text="Instant Reload", Default=false, Callback=function(v) getgenv().ZH_InstantReload = v end})
 GunModsGroup2:AddToggle("SmallCross", {Text="Small Crosshair",Default=false, Callback=function(v) getgenv().ZH_SmallCrosshair= v end})
 
--- World
+-- World (Lighting)
 WorldGroupbox:AddToggle("Shadow",     {Text="Shadows", Default=true, Callback=function(v) getgenv().Light.Shadows = v end})
 WorldGroupbox:AddSlider("Time",       {Text="Time of Day", Min=0,  Max=24,  Default=math.floor(Lighting.ClockTime+0.5), Rounding=1, Callback=function(v) getgenv().Light.ClockTime  = v end})
 WorldGroupbox:AddSlider("Brightness", {Text="Brightness",  Min=0,  Max=10,  Default=2,   Rounding=2, Callback=function(v) getgenv().Light.Brightness = v end})
 WorldGroupbox:AddSlider("FOV",        {Text="Field of View",Min=45, Max=120, Default=math.floor(camera.FieldOfView+0.5), Rounding=1, Callback=function(v) getgenv().Visual.FieldOfView = v end})
 
+-- World (Environment)
 WorldGroupbox2:AddColorPicker("AmbientColor", {
     Text="Ambient Color", Default=Color3.fromRGB(150,150,150),
     Callback=function(c) getgenv().Light.Ambient=c; getgenv().Light.OutdoorAmbient=c end,
 })
 WorldGroupbox2:AddToggle("FogEnabled", {Text="Enable Fog", Default=false, Callback=function(v) getgenv().Light.FogEnabled = v end})
 WorldGroupbox2:AddSlider("FogDist",    {Text="Fog Distance", Min=10, Max=5000, Default=1000, Rounding=1, Callback=function(v) getgenv().Light.FogEnd = v end})
+WorldGroupbox2:AddColorPicker("FogColor", {
+    Text="Fog Color", Default=Color3.fromRGB(200,200,200),
+    Callback=function(c) Lighting.FogColor = c end,
+})
 
--- Visuals
+-- World Extras  (these were defined but the UI was never wired up)
+WorldGroupbox3:AddToggle("FullBright", {
+    Text="Full Bright", Default=false,
+    Callback=function(v) getgenv().WorldExtra.FullBright = v end,
+})
+WorldGroupbox3:AddToggle("RainbowTime", {
+    Text="Rainbow Time of Day", Default=false,
+    Callback=function(v) getgenv().WorldExtra.RainbowTime = v end,
+})
+WorldGroupbox3:AddSlider("RainbowSpeed", {
+    Text="Rainbow Speed", Min=0.1, Max=5, Default=0.5, Rounding=2,
+    Callback=function(v) getgenv().WorldExtra.RainbowSpeed = v end,
+})
+WorldGroupbox3:AddToggle("NoBlur", {
+    Text="No Blur / No DOF", Default=false,
+    Callback=function(v) getgenv().WorldExtra.NoBlur = v end,
+})
+WorldGroupbox3:AddToggle("NoCamBob", {
+    Text="No Camera Bob", Default=false,
+    Callback=function(v) getgenv().WorldExtra.NoCameraBob = v end,
+})
+
+-- Weapon Chams
 WeaponChamsGroup:AddToggle("WeaponChams", {
     Text="Weapon Chams", Default=false, HasColorPicker=true,
     Callback=function(v) weaponchams(v) end,
     ColorCallback=function(c) getgenv().WeaponChamsColor = c end,
 })
+
+-- Player Highlights
 HighlightGroup:AddToggle("PlayerHighlights", {
     Text="Player Highlights", Default=false, HasColorPicker=true,
     Callback=function(v) playerhighlights(v) end,
@@ -1525,6 +1690,83 @@ HighlightGroup:AddSlider("HLOpacity",{
             if h.parts then for _, p in pairs(h.parts) do pcall(function() p.Transparency = v end) end end
         end
     end,
+})
+
+-- Arm Chams  (these groupboxes were defined but never wired to the UI)
+ArmChamsGroup:AddToggle("ArmChamsEnabled", {
+    Text="Arm Chams", Default=false, HasColorPicker=true,
+    Callback=function(v)
+        getgenv().ZH_ArmChams.Enabled = v
+        refreshCameraChams()
+    end,
+    ColorCallback=function(c)
+        getgenv().ZH_ArmChams.Color = c
+        refreshCameraChams()
+    end,
+})
+ArmChamsGroup:AddDropdown("ArmChamsMat", {
+    Text="Material", Values={"Neon","ForceField","Glass","SmoothPlastic"}, Default="Neon",
+    Callback=function(v)
+        getgenv().ZH_ArmChams.Material = v
+        refreshCameraChams()
+    end,
+})
+ArmChamsGroup:AddSlider("ArmChamsTransp", {
+    Text="Transparency", Min=0, Max=1, Default=0, Rounding=2,
+    Callback=function(v)
+        getgenv().ZH_ArmChams.Transparency = v
+        refreshCameraChams()
+    end,
+})
+
+-- Gun Chams  (same deal, was never wired)
+GunChamsGroup:AddToggle("GunChamsEnabled", {
+    Text="Gun Chams", Default=false, HasColorPicker=true,
+    Callback=function(v)
+        getgenv().ZH_GunChams.Enabled = v
+        refreshCameraChams()
+    end,
+    ColorCallback=function(c)
+        getgenv().ZH_GunChams.Color = c
+        refreshCameraChams()
+    end,
+})
+GunChamsGroup:AddDropdown("GunChamsMat", {
+    Text="Material", Values={"Neon","ForceField","Glass","SmoothPlastic"}, Default="Neon",
+    Callback=function(v)
+        getgenv().ZH_GunChams.Material = v
+        refreshCameraChams()
+    end,
+})
+GunChamsGroup:AddSlider("GunChamsTransp", {
+    Text="Transparency", Min=0, Max=1, Default=0, Rounding=2,
+    Callback=function(v)
+        getgenv().ZH_GunChams.Transparency = v
+        refreshCameraChams()
+    end,
+})
+
+-- Enemy Chams  (new – uses source-style per-frame property override)
+EnemyChamsGroup:AddToggle("EnemyChamsEnabled", {
+    Text="Enemy Chams", Default=false, HasColorPicker=true,
+    Callback=function(v)
+        getgenv().ZH_EnemyChams.Enabled = v
+        if v then startEnemyChams() else stopEnemyChams() end
+    end,
+    ColorCallback=function(c) getgenv().ZH_EnemyChams.Color = c end,
+})
+EnemyChamsGroup:AddToggle("EnemyChamsTeam", {
+    Text="Show Teammates", Default=false, HasColorPicker=true,
+    Callback=function(v) getgenv().ZH_EnemyChams.ShowTeam = v end,
+    ColorCallback=function(c) getgenv().ZH_EnemyChams.TeamColor = c end,
+})
+EnemyChamsGroup:AddDropdown("EnemyChamsMat", {
+    Text="Material", Values={"Neon","ForceField","Glass","SmoothPlastic"}, Default="Neon",
+    Callback=function(v) getgenv().ZH_EnemyChams.Material = v end,
+})
+EnemyChamsGroup:AddSlider("EnemyChamsTransp", {
+    Text="Transparency", Min=0, Max=1, Default=0.3, Rounding=2,
+    Callback=function(v) getgenv().ZH_EnemyChams.Transparency = v end,
 })
 
 -- Bullet Tracers
