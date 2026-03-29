@@ -796,8 +796,17 @@ function UILibrary.new(options)
                                     local guiInset = game:GetService("GuiService"):GetGuiInset()
                                     mousePos = Vector2.new(mousePos.X, mousePos.Y - guiInset.Y)
                                     
-                                    if mousePos.X < windowPos.X or mousePos.X > windowPos.X + windowSize.X or
-                                       mousePos.Y < windowPos.Y or mousePos.Y > windowPos.Y + windowSize.Y then
+                                    -- Don't close when clicking the icon itself (MouseButton1Click handles toggle)
+                                    local onIcon = false
+                                    if ColorIcon then
+                                        local ip = ColorIcon.AbsolutePosition
+                                        local is = ColorIcon.AbsoluteSize
+                                        onIcon = mousePos.X >= ip.X and mousePos.X <= ip.X + is.X
+                                            and mousePos.Y >= ip.Y and mousePos.Y <= ip.Y + is.Y
+                                    end
+                                    
+                                    if not onIcon and (mousePos.X < windowPos.X or mousePos.X > windowPos.X + windowSize.X or
+                                       mousePos.Y < windowPos.Y or mousePos.Y > windowPos.Y + windowSize.Y) then
                                         colorPickerWindow.Visible = false
                                     end
                                 end
@@ -1833,6 +1842,7 @@ function UILibrary.new(options)
                         local isActive = false
                         local keyDownConn = nil
                         local keyUpConn = nil
+                        local bindKeyActions -- forward declare so stopListening/startListening can reference it
 
                         local function stopListening()
                             if inputConn then inputConn:Disconnect() inputConn = nil end
@@ -1867,7 +1877,7 @@ function UILibrary.new(options)
                         end
 
                         -- Bind hold / toggle / always logic
-                        function bindKeyActions()
+                        bindKeyActions = function()
                             if currentMode == "Always" then
                                 isActive = true
                                 if options.Callback then options.Callback(true) end
