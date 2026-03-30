@@ -69,6 +69,18 @@ local function smoothTween(instance, properties, duration)
     return tween
 end
 
+-- Parent a ScreenGui to CoreGui (exploit-safe, renders above game GUIs).
+-- Falls back to PlayerGui if CoreGui is inaccessible.
+local function safeParentGui(gui, player)
+    local ok = pcall(function()
+        local cg = game:GetService("CoreGui")
+        gui.Parent = cg
+    end)
+    if not ok or not gui.Parent then
+        gui.Parent = player:WaitForChild("PlayerGui")
+    end
+end
+
 -- Main UI creation function
 function UILibrary.new(options)
     options = options or {}
@@ -109,9 +121,11 @@ function UILibrary.new(options)
     local UICorner_3 = Instance.new("UICorner")
 
     ScreenGui.Name = options.Name
-    ScreenGui.Parent = player:WaitForChild("PlayerGui")
-    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
     ScreenGui.ResetOnSpawn = false
+    ScreenGui.IgnoreGuiInset = false
+    ScreenGui.DisplayOrder = 10000
+    safeParentGui(ScreenGui, player)
 
     MainBackGround.Name = "MainBackGround"
     MainBackGround.Parent = ScreenGui
@@ -505,10 +519,10 @@ function UILibrary.new(options)
                             -- Create dedicated ScreenGui for color picker
                             local colorPickerScreenGui = Instance.new("ScreenGui")
                             colorPickerScreenGui.Name = "ColorPickerGui_" .. id
-                            colorPickerScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
                             colorPickerScreenGui.ResetOnSpawn = false
-                            colorPickerScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-                            colorPickerScreenGui.DisplayOrder = 999
+                            colorPickerScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+                            colorPickerScreenGui.DisplayOrder = 10001
+                            safeParentGui(colorPickerScreenGui, player)
                             
                             -- Create main color picker window
                             local colorPickerWindow = Instance.new("Frame")
@@ -1324,10 +1338,10 @@ function UILibrary.new(options)
                                 -- Create dedicated ScreenGui for color picker
                                 local colorPickerScreenGui = Instance.new("ScreenGui")
                                 colorPickerScreenGui.Name = "ColorPickerGui_" .. (id or "Label")
-                                colorPickerScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
                                 colorPickerScreenGui.ResetOnSpawn = false
-                                colorPickerScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-                                colorPickerScreenGui.DisplayOrder = 999
+                                colorPickerScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+                                colorPickerScreenGui.DisplayOrder = 10001
+                                safeParentGui(colorPickerScreenGui, player)
                                 
                                 -- Create main color picker window
                                 local colorPickerWindow = Instance.new("Frame")
