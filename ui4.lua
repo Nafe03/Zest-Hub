@@ -407,22 +407,6 @@ function UILibrary.new(options)
         TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 4,
     })
 
-    -- Close button
-    local closeBtn = make("TextButton", {
-        Parent = Header, BackgroundColor3 = Color3.fromRGB(45,45,45),
-        BorderSizePixel = 0,
-        AnchorPoint = Vector2.new(1,0.5),
-        Position = UDim2.new(1,-10,0.5,0),
-        Size = UDim2.new(0,18,0,18),
-        Font = Enum.Font.GothamBold, TextSize = 14,
-        Text = "×", TextColor3 = Color3.fromRGB(170,170,170),
-        AutoButtonColor = false, ZIndex = 4,
-    })
-    make("UICorner", {CornerRadius = UDim.new(1,0), Parent = closeBtn})
-    closeBtn.MouseEnter:Connect(function() tween(closeBtn,{BackgroundColor3=Color3.fromRGB(210,55,55), TextColor3=Color3.new(1,1,1)},0.15) end)
-    closeBtn.MouseLeave:Connect(function() tween(closeBtn,{BackgroundColor3=Color3.fromRGB(45,45,45), TextColor3=Color3.fromRGB(170,170,170)},0.15) end)
-    closeBtn.MouseButton1Click:Connect(function() ScreenGui.Enabled = false end)
-
     -- Horizontal separator under header
     make("Frame", {
         Parent = Root, BackgroundColor3 = Color3.fromRGB(30,30,30),
@@ -469,7 +453,7 @@ function UILibrary.new(options)
         local wm = make("TextLabel", {
             Name = "Watermark", Parent = ScreenGui,
             BackgroundColor3 = Color3.fromRGB(12,12,12),
-            BackgroundTransparency = 0.25,
+            BackgroundTransparency = 0.55,
             Position = UDim2.new(0,8,0,8),
             Size = UDim2.new(0,0,0,24),
             AutomaticSize = Enum.AutomaticSize.X,
@@ -607,7 +591,7 @@ function UILibrary.new(options)
         local Indicator = make("Frame", {
             Parent = TabBtn,
             BackgroundColor3 = accent, BorderSizePixel = 0,
-            Position = UDim2.new(0,0,0.15,0),
+            Position = UDim2.new(-0.2,0,0.15,0),
             Size = UDim2.new(0,3,0.7,0),
             ZIndex = 2, Visible = false,
         })
