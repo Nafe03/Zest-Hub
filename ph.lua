@@ -440,9 +440,9 @@ local function weaponchams(state)
                 local cham = weapon:Clone()
                 local tag  = Instance.new("BoolValue"); tag.Name = "_ZHCham"; tag.Parent = cham
                 for _, p in ipairs(cham:GetDescendants()) do
-                    if p:IsA("BasePart") then
-                        p.Color       = getgenv().WeaponChamsColor
-                        p.Material    = Enum.Material.Neon
+                    if p:IsA("BasePart") and p.Transparency ~= 1 then
+                        p.Color        = getgenv().WeaponChamsColor
+                        p.Material     = Enum.Material.Neon
                         p.Transparency = 0.3
                     end
                 end
@@ -795,24 +795,6 @@ local function showHitmarker(isKill)
         for _, l in ipairs(hitmarkerLines) do l.Visible = false end
     end)
 end
-
--- ==============================================================
---  SILENT AIM FOV CIRCLE
--- ==============================================================
-local silentAimFOVCircle = Drawing.new("Circle")
-silentAimFOVCircle.Color     = Color3.fromRGB(255,255,255)
-silentAimFOVCircle.Radius    = 300
-silentAimFOVCircle.NumSides  = 48
-silentAimFOVCircle.Visible   = false
-silentAimFOVCircle.Filled    = false
-silentAimFOVCircle.Thickness = 1
-
-runService.RenderStepped:Connect(function()
-    silentAimFOVCircle.Position = camera.ViewportSize * 0.5
-    silentAimFOVCircle.Visible  = getgenv().ZH_SilentAim.Enabled and getgenv().ZH_SilentAim.ShowFOV
-    silentAimFOVCircle.Color    = getgenv().ZH_SilentAim.FOVColor
-    silentAimFOVCircle.Radius   = getgenv().ZH_SilentAim.FOVRadius
-end)
 
 -- ==============================================================
 --  SILENT AIM HELPER  (shared by both hooks)
@@ -1520,7 +1502,7 @@ end)
 --  UI
 -- ==============================================================
 print("[ZestHub] Loading UI library...")
-local UILibrary = loadstring(game:HttpGetAsync("https://raw.githubusercontent.com/Nafe03/Zest-Hub/refs/heads/main/GuiTest1.lua"))()
+local UILibrary = loadstring(game:HttpGetAsync("https://raw.githubusercontent.com/Nafe03/Zest-Hub/refs/heads/main/ui4.lua"))()
 
 local Window = UILibrary.new({
     Name = "ZestHub", ToggleKey = Enum.KeyCode.RightShift,
@@ -1530,6 +1512,78 @@ local Window = UILibrary.new({
     Position     = UDim2.new(0.226, 0, 0.146, 0),
     Watermark    = true, WatermarkText = "ZestHub",
 })
+
+-- ==============================================================
+--  ELEMENT REGISTRY  (auto-registers every UI element by id
+--  so the config system can snapshot and restore them all)
+-- ==============================================================
+local _reg = {}   -- [id] = { elem, kind, cb, colorCb }
+
+local function _wrap(group)
+    local orig_toggle    = group.AddToggle
+    local orig_slider    = group.AddSlider
+    local orig_dropdown  = group.AddDropdown
+    local orig_colorpick = group.AddColorPicker
+    local orig_label     = group.AddLabel
+    local orig_keypicker = group.AddKeyPicker
+
+    group.AddToggle = function(self, id, opts)
+        local e = orig_toggle(self, id, opts)
+        _reg[id] = { elem=e, kind="Toggle", cb=opts and opts.Callback, colorCb=opts and opts.ColorCallback }
+        return e
+    end
+    group.AddSlider = function(self, id, opts)
+        local e = orig_slider(self, id, opts)
+        _reg[id] = { elem=e, kind="Slider", cb=opts and opts.Callback }
+        return e
+    end
+    group.AddDropdown = function(self, id, opts)
+        local e = orig_dropdown(self, id, opts)
+        _reg[id] = { elem=e, kind="Dropdown", cb=opts and opts.Callback }
+        return e
+    end
+    if orig_colorpick then
+        group.AddColorPicker = function(self, id, opts)
+            local e = orig_colorpick(self, id, opts)
+            _reg[id] = { elem=e, kind="ColorPicker", cb=opts and opts.Callback }
+            return e
+        end
+    end
+    if orig_keypicker then
+        group.AddKeyPicker = function(self, id, opts)
+            local e = orig_keypicker(self, id, opts)
+            _reg[id] = { elem=e, kind="KeyPicker", cb=opts and opts.Callback }
+            return e
+        end
+    end
+    if orig_label then
+        group.AddLabel = function(self, text)
+            local lbl = orig_label(self, text)
+            if lbl and lbl.AddColorPicker then
+                local origLblCP = lbl.AddColorPicker
+                lbl.AddColorPicker = function(lself, id, opts)
+                    local e = origLblCP(lself, id, opts)
+                    _reg[id] = { elem=e, kind="ColorPicker", cb=opts and opts.Callback }
+                    return e
+                end
+            end
+            return lbl
+        end
+    end
+    return group
+end
+
+local function _wrapTab(tab)
+    local origL = tab.AddLeftGroupbox
+    local origR = tab.AddRightGroupbox
+    tab.AddLeftGroupbox  = function(self, name) return _wrap(origL(self, name)) end
+    tab.AddRightGroupbox = function(self, name) return _wrap(origR(self, name)) end
+    return tab
+end
+
+-- Wrap Window.AddTab so every future tab auto-wraps its groupboxes
+local _origAddTab = Window.AddTab
+Window.AddTab = function(self, name) return _wrapTab(_origAddTab(self, name)) end
 
 local ESPTab     = Window:AddTab("ESP")
 local AimbotTab  = Window:AddTab("Aimbot")
@@ -1862,4 +1916,258 @@ TweaksGroup:AddToggle("UnlockCamos", {
     end,
 })
 
-print("[ZestHub] v6 Loaded - Toggle: RightShift")
+-- ==============================================================
+--  CONFIG SYSTEM  (saves / loads every Toggle, Slider, Dropdown,
+--  ColorPicker, and KeyPicker from the registry above)
+-- ==============================================================
+local HttpService = game:GetService("HttpService")
+local CFG_FOLDER  = "ZestHub"
+local CFG_SUB     = "ZestHub/configs"
+for _, p in ipairs({ CFG_FOLDER, CFG_SUB }) do
+    if not isfolder(p) then makefolder(p) end
+end
+
+local function c3hex(c)
+    return string.format("%02x%02x%02x",
+        math.round(c.R*255), math.round(c.G*255), math.round(c.B*255))
+end
+
+local function buildSnapshot()
+    local snap = {}
+    for id, entry in pairs(_reg) do
+        local e, kind = entry.elem, entry.kind
+        if kind == "Toggle" then
+            local val = e.GetValue and e.GetValue() or false
+            local col = e.ColorPicker and e.ColorPicker.GetColor and e.ColorPicker.GetColor()
+            snap[id] = { k="T", v=val, c = col and c3hex(col) or nil }
+        elseif kind == "Slider" then
+            snap[id] = { k="S", v = e.GetValue and e.GetValue() or 0 }
+        elseif kind == "Dropdown" then
+            snap[id] = { k="D", v = e.GetValue and e.GetValue() or "" }
+        elseif kind == "ColorPicker" then
+            local col = e.GetColor and e.GetColor()
+            if col then snap[id] = { k="C", c = c3hex(col) } end
+        elseif kind == "KeyPicker" then
+            local key  = e.GetValue and e.GetValue()
+            local mode = e.GetMode  and e.GetMode()
+            if key then snap[id] = { k="K", v=key.Name, m=mode or "Toggle" } end
+        end
+    end
+    return snap
+end
+
+local function applySnapshot(snap)
+    for id, data in pairs(snap) do
+        local entry = _reg[id]
+        if not entry then continue end
+        local e = entry.elem
+        if data.k == "T" then
+            local val = data.v == true
+            if e.SetValue then e.SetValue(val) end
+            if entry.cb then pcall(entry.cb, val) end
+            if data.c and e.ColorPicker and e.ColorPicker.SetColor then
+                local ok, col = pcall(Color3.fromHex, Color3, data.c)
+                if ok and col then
+                    e.ColorPicker.SetColor(col)
+                    if entry.colorCb then pcall(entry.colorCb, col) end
+                end
+            end
+        elseif data.k == "S" then
+            local val = tonumber(data.v) or 0
+            if e.SetValue then e.SetValue(val) end
+            if entry.cb then pcall(entry.cb, val) end
+        elseif data.k == "D" then
+            if e.SetValue and data.v and data.v ~= "" then
+                e.SetValue(data.v)
+                if entry.cb then pcall(entry.cb, data.v) end
+            end
+        elseif data.k == "C" then
+            if data.c then
+                local ok, col = pcall(Color3.fromHex, Color3, data.c)
+                if ok and col then
+                    if e.SetColor then e.SetColor(col) end
+                    if entry.cb then pcall(entry.cb, col) end
+                end
+            end
+        elseif data.k == "K" then
+            if data.v and data.v ~= "" then
+                local ok, kc = pcall(function() return Enum.KeyCode[data.v] end)
+                if ok and kc then
+                    if e.SetKey  then pcall(e.SetKey,  kc) end
+                    if data.m and e.SetMode then pcall(e.SetMode, data.m) end
+                end
+            end
+        end
+    end
+end
+
+local function cfgPath(name)   return CFG_SUB.."/"..name..".json" end
+
+local function listConfigs()
+    local out = {}
+    for _, f in ipairs(listfiles(CFG_SUB)) do
+        if f:sub(-5) == ".json" then
+            local n = f:match("[/\\]([^/\\]+)%.json$")
+            if n then table.insert(out, n) end
+        end
+    end
+    return out
+end
+
+local function saveConfig(name)
+    if not name or name:gsub(" ","") == "" then return false, "empty name" end
+    local ok, enc = pcall(HttpService.JSONEncode, HttpService, buildSnapshot())
+    if not ok then return false, "encode error" end
+    writefile(cfgPath(name), enc)
+    return true
+end
+
+local function loadConfig(name)
+    if not name then return false, "no name" end
+    if not isfile(cfgPath(name)) then return false, "not found" end
+    local ok, dec = pcall(HttpService.JSONDecode, HttpService, readfile(cfgPath(name)))
+    if not ok then return false, "decode error" end
+    applySnapshot(dec)
+    return true
+end
+
+local function deleteConfig(name)
+    if isfile(cfgPath(name)) then delfile(cfgPath(name)); return true end
+    return false
+end
+
+local function getAutoload()
+    local p = CFG_SUB.."/autoload.txt"
+    return isfile(p) and readfile(p) or nil
+end
+local function setAutoload(name)
+    writefile(CFG_SUB.."/autoload.txt", name or "")
+end
+
+-- Auto-load 1 second after start so all hooks/modules are settled
+task.spawn(function()
+    task.wait(1)
+    local auto = getAutoload()
+    if auto and auto ~= "" then
+        local ok = loadConfig(auto)
+        print(ok and ("[Config] Auto-loaded: "..auto) or "[Config] Auto-load failed")
+    end
+end)
+
+-- ── Config Tab ────────────────────────────────────────
+local CfgTab   = Window:AddTab("Config")
+local CfgLeft  = CfgTab:AddLeftGroupbox("Actions")
+local CfgRight = CfgTab:AddRightGroupbox("Configs")
+
+local _cfgList   = listConfigs()
+local _cfgSel    = nil
+local _cfgSelLbl = nil
+
+CfgRight:AddDropdown("CfgListDrop", {
+    Text     = "Select Config",
+    Values   = #_cfgList > 0 and _cfgList or {"(no configs yet)"},
+    Default  = 1,
+    Callback = function(v)
+        if v == "(no configs yet)" then _cfgSel = nil; return end
+        _cfgSel = v
+        if _cfgSelLbl then _cfgSelLbl.SetText("Selected: "..v) end
+    end,
+})
+
+_cfgSelLbl = CfgRight:AddLabel("Selected: none")
+
+CfgRight:AddButton("CfgRefreshBtn", {
+    Text = "Refresh List",
+    Callback = function()
+        _cfgList = listConfigs()
+        local names = table.concat(_cfgList, ", ")
+        print("[Config] "..#_cfgList.." config(s): "..(names ~= "" and names or "none"))
+        Window:Notify(#_cfgList.." config(s) found", 1, 3)
+    end,
+})
+
+local _autoLbl = CfgRight:AddLabel("Autoload: "..(getAutoload() or "none"))
+
+CfgLeft:AddButton("CfgSaveNewBtn", {
+    Text = "Save New Config",
+    Callback = function()
+        local name = "config_"..os.date("%m%d_%H%M%S")
+        local ok, err = saveConfig(name)
+        if ok then
+            _cfgList = listConfigs()
+            _cfgSel  = name
+            if _cfgSelLbl then _cfgSelLbl.SetText("Selected: "..name) end
+            print("[Config] Saved: "..name)
+            Window:Notify("Saved: "..name, 2, 3)
+        else
+            warn("[Config] "..tostring(err))
+            Window:Notify("Save failed: "..tostring(err), 3, 3)
+        end
+    end,
+})
+
+CfgLeft:AddButton("CfgLoadBtn", {
+    Text = "Load Selected",
+    Callback = function()
+        if not _cfgSel then Window:Notify("Select a config first", 4, 3); return end
+        local ok, err = loadConfig(_cfgSel)
+        if ok then
+            print("[Config] Loaded: ".._cfgSel)
+            Window:Notify("Loaded: ".._cfgSel, 2, 3)
+        else
+            warn("[Config] "..tostring(err))
+            Window:Notify("Load failed: "..tostring(err), 3, 3)
+        end
+    end,
+})
+
+CfgLeft:AddButton("CfgOverwriteBtn", {
+    Text = "Overwrite Selected",
+    Callback = function()
+        if not _cfgSel then Window:Notify("Select a config first", 4, 3); return end
+        local ok, err = saveConfig(_cfgSel)
+        if ok then
+            print("[Config] Overwritten: ".._cfgSel)
+            Window:Notify("Overwritten: ".._cfgSel, 2, 3)
+        else
+            warn("[Config] "..tostring(err))
+            Window:Notify("Overwrite failed: "..tostring(err), 3, 3)
+        end
+    end,
+})
+
+CfgLeft:AddButton("CfgDeleteBtn", {
+    Text = "Delete Selected",
+    Callback = function()
+        if not _cfgSel then Window:Notify("Select a config first", 4, 3); return end
+        deleteConfig(_cfgSel)
+        print("[Config] Deleted: ".._cfgSel)
+        Window:Notify("Deleted: ".._cfgSel, 3, 3)
+        _cfgSel  = nil
+        _cfgList = listConfigs()
+        if _cfgSelLbl then _cfgSelLbl.SetText("Selected: none") end
+    end,
+})
+
+CfgLeft:AddButton("CfgAutoloadBtn", {
+    Text = "Set as Autoload",
+    Callback = function()
+        if not _cfgSel then Window:Notify("Select a config first", 4, 3); return end
+        setAutoload(_cfgSel)
+        _autoLbl.SetText("Autoload: ".._cfgSel)
+        print("[Config] Autoload → ".._cfgSel)
+        Window:Notify("Autoload set: ".._cfgSel, 2, 3)
+    end,
+})
+
+CfgLeft:AddButton("CfgClearAutoBtn", {
+    Text = "Clear Autoload",
+    Callback = function()
+        setAutoload("")
+        _autoLbl.SetText("Autoload: none")
+        print("[Config] Autoload cleared")
+        Window:Notify("Autoload cleared", 1, 3)
+    end,
+})
+
+print("[ZestHub] v7 Loaded - Toggle: RightShift")
