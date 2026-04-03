@@ -340,11 +340,8 @@ getgenv().Light = {
 }
 getgenv().Visual = { FieldOfView = camera.FieldOfView }
 getgenv().WorldExtra = {
-    FullBright    = false,
-    RainbowTime   = false,
-    RainbowSpeed  = 0.5,
-    NoBlur        = false,
-    NoCameraBob   = false,
+    FullBright  = false,
+    NoBlur      = false,
 }
 
 -- ==============================================================
@@ -548,7 +545,8 @@ local aimTime        = nil
 local aimbotting     = false
 
 local rayParams = RaycastParams.new()
-rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+-- FIX: Blacklist deprecated in newer Roblox; fall back gracefully
+rayParams.FilterType = (Enum.RaycastFilterType.Exclude or Enum.RaycastFilterType.Blacklist)
 local function visCheck(origin, target)
     local ignore = {camera}
     if workspace:FindFirstChild("Players") then table.insert(ignore, workspace.Players) end
@@ -759,7 +757,6 @@ getgenv().ZH_Hitmarker = {
 }
 
 local hitmarkerLines = {}
-local hitmarkerActive = false
 for i = 1, 4 do
     local l = Drawing.new("Line")
     l.Visible   = false
@@ -820,7 +817,7 @@ local function getSilentAimTarget()
             if d < bestDist then
                 if sa.VisCheck then
                     local rp = RaycastParams.new()
-                    rp.FilterType = Enum.RaycastFilterType.Blacklist
+                    rp.FilterType = (Enum.RaycastFilterType.Exclude or Enum.RaycastFilterType.Blacklist)
                     rp.FilterDescendantsInstances = {camera, workspace.Players}
                     if workspace:Raycast(camera.CFrame.Position, wp - camera.CFrame.Position, rp) then return end
                 end
@@ -1040,7 +1037,9 @@ local function getEntryData(entry)
     pcall(function()
         if not entry:isReady() then return end
         local sm = entry._smoothReplication
-        if not sm or not sm._prevFrameTime then return end
+        -- FIX: was "if not sm._prevFrameTime" — 0 is falsy in Lua, causing valid
+        -- players to be skipped. Use ~= nil so any number (including 0) passes.
+        if not sm or sm._prevFrameTime == nil then return end
         local tp = entry:getThirdPersonObject()
         if not tp then return end
         charModel = tp:getCharacterModel()
@@ -1205,6 +1204,98 @@ function ESP:setEnabled(state)
 end
 
 _G.ESP = ESP
+
+-- ==============================================================
+--  HIGHLIGHT ESP  (native Roblox Highlight instances)
+--  Much cheaper than neon-part highlights and renders through walls.
+-- ==============================================================
+getgenv().ZH_HighlightESP = {
+    Enabled           = false,
+    ShowTeam          = false,
+    EnemyFill         = Color3.fromRGB(255, 50,  50),
+    EnemyFillAlpha    = 0.5,
+    EnemyOutline      = Color3.fromRGB(255, 255, 255),
+    EnemyOutlineAlpha = 0,
+    TeamFill          = Color3.fromRGB(50,  220, 50),
+    TeamFillAlpha     = 0.5,
+    TeamOutline       = Color3.fromRGB(255, 255, 255),
+    TeamOutlineAlpha  = 0,
+}
+
+local _hlCache   = {}  -- [entry] = Highlight instance
+local _hlConn    = nil
+local _hlFolder  = nil
+pcall(function()
+    _hlFolder = Instance.new("Folder")
+    _hlFolder.Name   = "ZH_HighlightESP"
+    _hlFolder.Parent = game:GetService("CoreGui")
+end)
+
+local function _hlGetChar(entry)
+    local char
+    pcall(function()
+        if entry.isReady and not entry:isReady() then return end
+        local tp = entry.getThirdPersonObject and entry:getThirdPersonObject()
+        if tp then char = (tp.getCharacterModel and tp:getCharacterModel()) or tp._character end
+        if not char then
+            local tpR = entry._thirdPersonObject
+            char = tpR and tpR._character
+        end
+    end)
+    return char
+end
+
+local function startHighlightESP()
+    if _hlConn then return end
+    _hlConn = runService.Heartbeat:Connect(function()
+        local cfg = getgenv().ZH_HighlightESP
+        if not cfg.Enabled or not replicationInterface then return end
+        local alive = {}
+        replicationInterface.operateOnAllEntries(function(plr, entry)
+            if plr == player then return end
+            if not entry._isEnemy and not cfg.ShowTeam then return end
+            local char = _hlGetChar(entry)
+            if not char then return end
+            alive[entry] = true
+            -- Create highlight if missing
+            if not _hlCache[entry] then
+                local h = Instance.new("Highlight")
+                h.Name             = "ZH_HL"
+                h.DepthMode        = Enum.HighlightDepthMode.AlwaysOnTop
+                h.Parent           = _hlFolder or workspace
+                _hlCache[entry]    = h
+            end
+            local h = _hlCache[entry]
+            h.Adornee = char
+            if entry._isEnemy then
+                h.FillColor           = cfg.EnemyFill
+                h.FillTransparency    = cfg.EnemyFillAlpha
+                h.OutlineColor        = cfg.EnemyOutline
+                h.OutlineTransparency = cfg.EnemyOutlineAlpha
+            else
+                h.FillColor           = cfg.TeamFill
+                h.FillTransparency    = cfg.TeamFillAlpha
+                h.OutlineColor        = cfg.TeamOutline
+                h.OutlineTransparency = cfg.TeamOutlineAlpha
+            end
+        end)
+        for entry, h in pairs(_hlCache) do
+            if not alive[entry] then
+                pcall(function() h:Destroy() end)
+                _hlCache[entry] = nil
+            end
+        end
+    end)
+end
+
+local function stopHighlightESP()
+    if _hlConn then _hlConn:Disconnect(); _hlConn = nil end
+    for _, h in pairs(_hlCache) do pcall(function() h:Destroy() end) end
+    _hlCache = {}
+end
+
+getgenv().ZH_StartHighlightESP = startHighlightESP
+getgenv().ZH_StopHighlightESP  = stopHighlightESP
 
 -- ==============================================================
 --  ARM / GUN CHAMS  (hooks camera.ChildAdded like source)
@@ -1445,8 +1536,11 @@ getgenv().ZH_StopEnemyChams  = stopEnemyChams
 -- ==============================================================
 --  LIGHTING / FOV HEARTBEAT
 -- ==============================================================
+-- Cache original sky so we can restore it
+local _originalSky = Lighting:FindFirstChildOfClass("Sky")
+
 runService.Heartbeat:Connect(function(dt)
-    local L = getgenv().Light
+    local L  = getgenv().Light
     local WE = getgenv().WorldExtra
 
     -- FullBright overrides ambient + brightness
@@ -1462,39 +1556,20 @@ runService.Heartbeat:Connect(function(dt)
         Lighting.Brightness     = L.Brightness
     end
 
-    -- Rainbow time of day
-    if WE and WE.RainbowTime then
-        L.ClockTime = (L.ClockTime + dt * (WE.RainbowSpeed or 0.5)) % 24
-    end
-
     Lighting.ClockTime = L.ClockTime
 
     if L.FogEnabled then
-        Lighting.FogEnd = L.FogEnd; Lighting.FogStart = 0
+        Lighting.FogEnd   = L.FogEnd
+        Lighting.FogStart = 0
     end
 
-    -- NoBlur: remove blur/glow effects added by the game
+    -- NoBlur: disable any BlurEffect / DepthOfField the game re-adds
     if WE and WE.NoBlur then
         for _, fx in Lighting:GetChildren() do
             if fx:IsA("BlurEffect") or fx:IsA("DepthOfFieldEffect") then
                 pcall(function() fx.Enabled = false end)
             end
         end
-    end
-
-    -- NoCameraBob: zero out character speed on camera step (handled by existing cameraObject hook)
-    -- We expose the flag; actual suppression happens in the cameraObject.step hook via charInterface
-    if WE and WE.NoCameraBob and charInterface and charInterface.getCharacterObject then
-        pcall(function()
-            local co = charInterface.getCharacterObject()
-            if co then
-                local old = co._speed
-                if old and old ~= 0 then
-                    co._speed = 0
-                    task.defer(function() pcall(function() co._speed = old end) end)
-                end
-            end
-        end)
     end
 end)
 
@@ -1593,24 +1668,38 @@ local VisualsTab = Window:AddTab("Visuals")
 local BulletTab  = Window:AddTab("Bullet")
 local TweaksTab  = Window:AddTab("Tweaks")
 
-local ESPGroupbox      = ESPTab:AddLeftGroupbox("ESP Settings")
-local ESPDisplayGroup  = ESPTab:AddRightGroupbox("Display")
+-- ESP tab groupboxes
+local ESPGroupbox       = ESPTab:AddLeftGroupbox("Box ESP")
+local ESPDisplayGroup   = ESPTab:AddRightGroupbox("Display Options")
+local HighlightESPGroup = ESPTab:AddLeftGroupbox("Highlight ESP")
+local HighlightESPRight = ESPTab:AddRightGroupbox("Highlight Colors")
+
+-- Aimbot tab
 local AimbotGroup      = AimbotTab:AddLeftGroupbox("Aimbot")
 local AimbotFOVGroup   = AimbotTab:AddRightGroupbox("FOV & Options")
+
+-- Gun Mods tab
 local GunModsGroup     = GunModsTab:AddLeftGroupbox("Gun Mods")
 local GunModsGroup2    = GunModsTab:AddRightGroupbox("Advanced")
+
+-- World tab (clean, no gimmicks)
 local WorldGroupbox    = WorldTab:AddLeftGroupbox("Lighting")
 local WorldGroupbox2   = WorldTab:AddRightGroupbox("Environment")
-local WorldGroupbox3   = WorldTab:AddLeftGroupbox("World Extras")
+
+-- Visuals tab
 local WeaponChamsGroup = VisualsTab:AddLeftGroupbox("Weapon Chams")
 local HighlightGroup   = VisualsTab:AddRightGroupbox("Player Highlights")
 local ArmChamsGroup    = VisualsTab:AddLeftGroupbox("Arm Chams")
 local GunChamsGroup    = VisualsTab:AddRightGroupbox("Gun Chams")
 local EnemyChamsGroup  = VisualsTab:AddLeftGroupbox("Enemy Chams")
+
+-- Bullet tab
 local BulletTracerGroup = BulletTab:AddLeftGroupbox("Bullet Tracers")
 local SilentAimGroup    = BulletTab:AddRightGroupbox("Silent Aim")
 local HitmarkerGroup    = BulletTab:AddLeftGroupbox("Hitmarker")
-local TweaksGroup       = TweaksTab:AddLeftGroupbox("Unlocks")
+
+-- Tweaks tab
+local TweaksGroup  = TweaksTab:AddLeftGroupbox("Unlocks")
 
 -- ESP
 ESPGroupbox:AddToggle("ESPEnabled", {
@@ -1635,10 +1724,58 @@ ESPGroupbox:AddToggle("BoxFillESP", {
     Text="Box Fill", Default=false, Callback=function(v) ESP.settings.showBoxFill = v end,
     HasColorPicker=true, ColorCallback=function(c) ESP.settings.boxFillColor = c end,
 })
-ESPDisplayGroup:AddSlider("BoxThick",     {Text="Box Thickness",       Min=1,  Max=5,  Default=2,   Rounding=1, Callback=function(v) ESP.settings.thickness          = v end})
-ESPDisplayGroup:AddSlider("TextSz",       {Text="Name Text Size",      Min=10, Max=30, Default=14,  Rounding=1, Callback=function(v) ESP.settings.textSize            = v end})
-ESPDisplayGroup:AddSlider("HBarThick",    {Text="Health Bar Thickness",Min=1,  Max=5,  Default=2,   Rounding=1, Callback=function(v) ESP.settings.healthBarThickness  = v end})
-ESPDisplayGroup:AddSlider("BoxFillOp",    {Text="Box Fill Opacity",    Min=0,  Max=1,  Default=0.3, Rounding=2, Callback=function(v) ESP.settings.boxFillOpacity       = v end})
+ESPDisplayGroup:AddSlider("BoxThick",  {Text="Box Thickness",       Min=1,  Max=5,  Default=2,   Rounding=1, Callback=function(v) ESP.settings.thickness          = v end})
+ESPDisplayGroup:AddSlider("TextSz",    {Text="Name Text Size",      Min=10, Max=30, Default=14,  Rounding=1, Callback=function(v) ESP.settings.textSize            = v end})
+ESPDisplayGroup:AddSlider("HBarThick", {Text="Health Bar Thickness",Min=1,  Max=5,  Default=2,   Rounding=1, Callback=function(v) ESP.settings.healthBarThickness  = v end})
+ESPDisplayGroup:AddSlider("BoxFillOp", {Text="Box Fill Opacity",    Min=0,  Max=1,  Default=0.3, Rounding=2, Callback=function(v) ESP.settings.boxFillOpacity       = v end})
+
+-- ── Highlight ESP ─────────────────────────────────────────────
+HighlightESPGroup:AddToggle("HLESPEnabled", {
+    Text    = "Enable Highlight ESP",
+    Default = false,
+    Callback = function(v)
+        getgenv().ZH_HighlightESP.Enabled = v
+        if v then startHighlightESP() else stopHighlightESP() end
+    end,
+})
+HighlightESPGroup:AddToggle("HLESPTeam", {
+    Text    = "Show Teammates",
+    Default = false,
+    Callback = function(v) getgenv().ZH_HighlightESP.ShowTeam = v end,
+})
+HighlightESPGroup:AddSlider("HLESPEnemyAlpha", {
+    Text="Enemy Fill Opacity", Min=0, Max=1, Default=0.5, Rounding=2,
+    Callback=function(v) getgenv().ZH_HighlightESP.EnemyFillAlpha = v end,
+})
+HighlightESPGroup:AddSlider("HLESPEnemyOutAlpha", {
+    Text="Enemy Outline Opacity", Min=0, Max=1, Default=0, Rounding=2,
+    Callback=function(v) getgenv().ZH_HighlightESP.EnemyOutlineAlpha = v end,
+})
+HighlightESPGroup:AddSlider("HLESPTeamAlpha", {
+    Text="Team Fill Opacity", Min=0, Max=1, Default=0.5, Rounding=2,
+    Callback=function(v) getgenv().ZH_HighlightESP.TeamFillAlpha = v end,
+})
+
+HighlightESPRight:AddColorPicker("HLESPEnemyFill", {
+    Text    = "Enemy Fill Color",
+    Default = Color3.fromRGB(255, 50, 50),
+    Callback = function(c) getgenv().ZH_HighlightESP.EnemyFill = c end,
+})
+HighlightESPRight:AddColorPicker("HLESPEnemyOutline", {
+    Text    = "Enemy Outline Color",
+    Default = Color3.fromRGB(255, 255, 255),
+    Callback = function(c) getgenv().ZH_HighlightESP.EnemyOutline = c end,
+})
+HighlightESPRight:AddColorPicker("HLESPTeamFill", {
+    Text    = "Team Fill Color",
+    Default = Color3.fromRGB(50, 220, 50),
+    Callback = function(c) getgenv().ZH_HighlightESP.TeamFill = c end,
+})
+HighlightESPRight:AddColorPicker("HLESPTeamOutline", {
+    Text    = "Team Outline Color",
+    Default = Color3.fromRGB(255, 255, 255),
+    Callback = function(c) getgenv().ZH_HighlightESP.TeamOutline = c end,
+})
 
 -- Aimbot
 AimbotGroup:AddToggle("AimbotEnabled",    {Text="Enable Aimbot",      Default=false, Callback=function(v) getgenv().ZH_Aimbot.Enabled    = v end})
@@ -1677,44 +1814,80 @@ GunModsGroup2:AddToggle("NoScope",    {Text="No Sniper Scope",Default=false, Cal
 GunModsGroup2:AddToggle("InstReload", {Text="Instant Reload", Default=false, Callback=function(v) getgenv().ZH_InstantReload = v end})
 GunModsGroup2:AddToggle("SmallCross", {Text="Small Crosshair",Default=false, Callback=function(v) getgenv().ZH_SmallCrosshair= v end})
 
--- World (Lighting)
-WorldGroupbox:AddToggle("Shadow",     {Text="Shadows", Default=true, Callback=function(v) getgenv().Light.Shadows = v end})
-WorldGroupbox:AddSlider("Time",       {Text="Time of Day", Min=0,  Max=24,  Default=math.floor(Lighting.ClockTime+0.5), Rounding=1, Callback=function(v) getgenv().Light.ClockTime  = v end})
-WorldGroupbox:AddSlider("Brightness", {Text="Brightness",  Min=0,  Max=10,  Default=2,   Rounding=2, Callback=function(v) getgenv().Light.Brightness = v end})
-WorldGroupbox:AddSlider("FOV",        {Text="Field of View",Min=45, Max=120, Default=math.floor(camera.FieldOfView+0.5), Rounding=1, Callback=function(v) getgenv().Visual.FieldOfView = v end})
-
--- World (Environment)
-WorldGroupbox2:AddColorPicker("AmbientColor", {
-    Text="Ambient Color", Default=Color3.fromRGB(150,150,150),
-    Callback=function(c) getgenv().Light.Ambient=c; getgenv().Light.OutdoorAmbient=c end,
+-- ── World ─────────────────────────────────────────────────────
+-- Lighting groupbox
+WorldGroupbox:AddToggle("Shadow", {
+    Text="Shadows", Default=true,
+    Callback=function(v) getgenv().Light.Shadows = v end,
 })
-WorldGroupbox2:AddToggle("FogEnabled", {Text="Enable Fog", Default=false, Callback=function(v) getgenv().Light.FogEnabled = v end})
-WorldGroupbox2:AddSlider("FogDist",    {Text="Fog Distance", Min=10, Max=5000, Default=1000, Rounding=1, Callback=function(v) getgenv().Light.FogEnd = v end})
-WorldGroupbox2:AddColorPicker("FogColor", {
-    Text="Fog Color", Default=Color3.fromRGB(200,200,200),
-    Callback=function(c) Lighting.FogColor = c end,
+WorldGroupbox:AddSlider("Time", {
+    Text="Time of Day", Min=0, Max=24,
+    Default=math.floor(Lighting.ClockTime + 0.5), Rounding=1,
+    Callback=function(v) getgenv().Light.ClockTime = v end,
 })
-
--- World Extras  (these were defined but the UI was never wired up)
-WorldGroupbox3:AddToggle("FullBright", {
+WorldGroupbox:AddSlider("Brightness", {
+    Text="Brightness", Min=0, Max=10, Default=2, Rounding=2,
+    Callback=function(v) getgenv().Light.Brightness = v end,
+})
+WorldGroupbox:AddSlider("FOV", {
+    Text="Field of View", Min=45, Max=120,
+    Default=math.floor(camera.FieldOfView + 0.5), Rounding=1,
+    Callback=function(v) getgenv().Visual.FieldOfView = v end,
+})
+WorldGroupbox:AddDropdown("LightTech", {
+    Text    = "Lighting Technology",
+    Values  = {"Voxel", "Compatibility", "ShadowMap", "Future"},
+    Default = "ShadowMap",
+    Callback = function(v)
+        pcall(function() Lighting.Technology = Enum.Technology[v] end)
+    end,
+})
+WorldGroupbox:AddToggle("FullBright", {
     Text="Full Bright", Default=false,
     Callback=function(v) getgenv().WorldExtra.FullBright = v end,
 })
-WorldGroupbox3:AddToggle("RainbowTime", {
-    Text="Rainbow Time of Day", Default=false,
-    Callback=function(v) getgenv().WorldExtra.RainbowTime = v end,
-})
-WorldGroupbox3:AddSlider("RainbowSpeed", {
-    Text="Rainbow Speed", Min=0.1, Max=5, Default=0.5, Rounding=2,
-    Callback=function(v) getgenv().WorldExtra.RainbowSpeed = v end,
-})
-WorldGroupbox3:AddToggle("NoBlur", {
+WorldGroupbox:AddToggle("NoBlur", {
     Text="No Blur / No DOF", Default=false,
     Callback=function(v) getgenv().WorldExtra.NoBlur = v end,
 })
-WorldGroupbox3:AddToggle("NoCamBob", {
-    Text="No Camera Bob", Default=false,
-    Callback=function(v) getgenv().WorldExtra.NoCameraBob = v end,
+
+-- Environment groupbox
+WorldGroupbox2:AddColorPicker("AmbientColor", {
+    Text    = "Ambient (indoor)",
+    Default = Color3.fromRGB(150, 150, 150),
+    Callback = function(c) getgenv().Light.Ambient = c end,
+})
+WorldGroupbox2:AddColorPicker("OutdoorAmbientColor", {
+    Text    = "Ambient (outdoor)",
+    Default = Color3.fromRGB(140, 140, 140),
+    Callback = function(c) getgenv().Light.OutdoorAmbient = c end,
+})
+WorldGroupbox2:AddToggle("FogEnabled", {
+    Text="Enable Fog", Default=false,
+    Callback=function(v) getgenv().Light.FogEnabled = v end,
+})
+WorldGroupbox2:AddSlider("FogDist", {
+    Text="Fog Distance", Min=10, Max=5000, Default=1000, Rounding=1,
+    Callback=function(v) getgenv().Light.FogEnd = v end,
+})
+WorldGroupbox2:AddColorPicker("FogColor", {
+    Text    = "Fog Color",
+    Default = Color3.fromRGB(200, 200, 200),
+    Callback = function(c) Lighting.FogColor = c end,
+})
+WorldGroupbox2:AddToggle("NoSky", {
+    Text    = "Remove Sky",
+    Default = false,
+    Callback = function(v)
+        if v then
+            -- cache the existing sky and remove it
+            _originalSky = _originalSky or Lighting:FindFirstChildOfClass("Sky")
+            if _originalSky then _originalSky.Parent = nil end
+        else
+            -- restore it
+            if _originalSky then _originalSky.Parent = Lighting end
+        end
+    end,
 })
 
 -- Weapon Chams
@@ -1878,40 +2051,28 @@ HitmarkerGroup:AddSlider("HMDuration",  {Text="Duration",  Min=0.05,Max=1,   Def
 TweaksGroup:AddToggle("UnlockAttachments", {
     Text    = "Unlock All Attachments",
     Default = false,
-    Callback = function(v)
-        if v then
-            unlockAttachments = true
-        end
-    end,
+    Callback = function(v) unlockAttachments = v end,
 })
 TweaksGroup:AddToggle("UnlockKnives", {
     Text    = "Unlock All Knives",
     Default = false,
-    Callback = function(v)
-        if v then
-            unlockKnives = true
-        end
-    end,
+    Callback = function(v) unlockKnives = v end,
 })
 TweaksGroup:AddToggle("UnlockCamos", {
     Text    = "Unlock All Camos",
     Default = false,
     Callback = function(v)
-        if v then
-            unlockCamos = true
-            if camoDatabase and playerDataUtils and playerClient then
-                pcall(function()
-                    for camoName, camoData in camoDatabase do
-                        if camoData.Case then
-                            playerDataUtils.getCasePacketData(
-                                playerClient.getPlayerData(),
-                                camoData.Case,
-                                true
-                            ).Skins[camoName] = { ALL = true }
-                        end
+        unlockCamos = v
+        if v and camoDatabase and playerDataUtils and playerClient then
+            pcall(function()
+                for camoName, camoData in camoDatabase do
+                    if camoData.Case then
+                        playerDataUtils.getCasePacketData(
+                            playerClient.getPlayerData(), camoData.Case, true
+                        ).Skins[camoName] = { ALL = true }
                     end
-                end)
-            end
+                end
+            end)
         end
     end,
 })
@@ -1921,8 +2082,8 @@ TweaksGroup:AddToggle("UnlockCamos", {
 --  ColorPicker, and KeyPicker from the registry above)
 -- ==============================================================
 local HttpService = game:GetService("HttpService")
-local CFG_FOLDER  = "ZestHub"
-local CFG_SUB     = "ZestHub/configs"
+local CFG_FOLDER  = "ZestHub-Phantom"
+local CFG_SUB     = "ZestHub-Phantom/configs"
 for _, p in ipairs({ CFG_FOLDER, CFG_SUB }) do
     if not isfolder(p) then makefolder(p) end
 end
@@ -1966,7 +2127,8 @@ local function applySnapshot(snap)
             if e.SetValue then e.SetValue(val) end
             if entry.cb then pcall(entry.cb, val) end
             if data.c and e.ColorPicker and e.ColorPicker.SetColor then
-                local ok, col = pcall(Color3.fromHex, Color3, data.c)
+                -- FIX: Color3.fromHex is static; old code passed Color3 table as bogus self
+                local ok, col = pcall(function() return Color3.fromHex(data.c) end)
                 if ok and col then
                     e.ColorPicker.SetColor(col)
                     if entry.colorCb then pcall(entry.colorCb, col) end
@@ -1983,7 +2145,7 @@ local function applySnapshot(snap)
             end
         elseif data.k == "C" then
             if data.c then
-                local ok, col = pcall(Color3.fromHex, Color3, data.c)
+                local ok, col = pcall(function() return Color3.fromHex(data.c) end)
                 if ok and col then
                     if e.SetColor then e.SetColor(col) end
                     if entry.cb then pcall(entry.cb, col) end
@@ -2170,4 +2332,4 @@ CfgLeft:AddButton("CfgClearAutoBtn", {
     end,
 })
 
-print("[ZestHub] v7 Loaded - Toggle: RightShift")
+print("[ZestHub] v9 Loaded - Toggle: RightShift")
