@@ -35,7 +35,6 @@ if Camera then
     end)
 end
 
--- helper: get the current screen center, useful for tracers etc.
 function Draw.GetCenter()
     return Vector2.new(Draw.ViewportSize.X * 0.5, Draw.ViewportSize.Y * 0.5)
 end
@@ -52,12 +51,17 @@ local TAG = {
     Image    = {},
 }
 
--- ── DEFAULTS (used both for init and dirty-diffing) ───────────────────
+-- ── DEFAULTS ────────────────────────────────────────────────────────
 local DEFAULTS = {
     Square = {
         Visible=false, ZIndex=1, Color=Color3.new(1,1,1), Transparency=0,
         Size=Vector2.new(0,0), Position=Vector2.new(0,0),
         Thickness=1, Filled=false, Rounding=0, OutlineColor=false,
+        FillColor=false,            -- false = use Color
+        FillTransparency=0,         -- independent fill alpha
+        Gradient=nil,                -- ColorSequence or nil
+        GradientTransparency=nil,    -- NumberSequence or nil
+        GradientRotation=0,
     },
     Text = {
         Visible=false, ZIndex=1, Color=Color3.new(1,1,1), Transparency=0,
@@ -72,6 +76,11 @@ local DEFAULTS = {
     Circle = {
         Visible=false, ZIndex=1, Color=Color3.new(1,1,1), Transparency=0,
         Position=Vector2.new(0,0), Radius=0, Thickness=1, Filled=false, NumSides=0,
+        FillColor=false,
+        FillTransparency=0,
+        Gradient=nil,
+        GradientTransparency=nil,
+        GradientRotation=0,
     },
     Quad = {
         Visible=false, ZIndex=1, Color=Color3.new(1,1,1), Transparency=0, Thickness=1,
@@ -94,16 +103,31 @@ local function shallowCopy(t)
     return o
 end
 
--- ── APPLIERS ───────────────────────────────────────────────────────────
--- Each applier writes only the Instance properties that actually changed,
--- tracked via obj._dirty (set true on __newindex writes that matter).
+-- ── shared gradient applier ────────────────────────────────────────
+local DEFAULT_TRANS_SEQ = NumberSequence.new(0)
 
+local function applyGradient(grad, p)
+    if p.Gradient then
+        if grad.Color ~= p.Gradient then grad.Color = p.Gradient end
+
+        local transSeq = p.GradientTransparency or DEFAULT_TRANS_SEQ
+        if grad.Transparency ~= transSeq then grad.Transparency = transSeq end
+
+        if grad.Rotation ~= p.GradientRotation then grad.Rotation = p.GradientRotation end
+        if not grad.Enabled then grad.Enabled = true end
+    else
+        if grad.Enabled then grad.Enabled = false end
+    end
+end
+
+-- ── APPLIERS ────────────────────────────────────────────────────────
 local applyLine
 
 local function applySquare(obj)
-    local p  = obj._props
-    local f  = obj._frame
-    local sk = obj._stroke
+    local p    = obj._props
+    local f    = obj._frame
+    local sk   = obj._stroke
+    local grad = obj._gradient
 
     if f.Visible ~= p.Visible then f.Visible = p.Visible end
     if f.ZIndex  ~= p.ZIndex  then f.ZIndex  = p.ZIndex  end
@@ -114,22 +138,29 @@ local function applySquare(obj)
     local pos = UDim2.new(0, p.Position.X, 0, p.Position.Y)
     if f.Position ~= pos then f.Position = pos end
 
-    if f.BackgroundColor3 ~= p.Color then f.BackgroundColor3 = p.Color end
+    -- fill color falls back to Color when FillColor not set
+    local fillColor = p.FillColor or p.Color
+    if f.BackgroundColor3 ~= fillColor then f.BackgroundColor3 = fillColor end
 
-    local bgTrans = p.Filled and c01(p.Transparency) or 1
+    -- fill transparency independent from outline transparency
+    local bgTrans = p.Filled and c01(p.FillTransparency) or 1
     if f.BackgroundTransparency ~= bgTrans then f.BackgroundTransparency = bgTrans end
 
+    -- outline
     local outlineColor = p.OutlineColor or p.Color
     if sk.Color ~= outlineColor then sk.Color = outlineColor end
     if sk.Thickness ~= p.Thickness then sk.Thickness = p.Thickness end
 
-    local skEnabled = not p.Filled and p.Thickness > 0
+    local skEnabled = p.Thickness > 0
     if sk.Enabled ~= skEnabled then sk.Enabled = skEnabled end
 
     local skTrans = c01(p.Transparency)
     if sk.Transparency ~= skTrans then sk.Transparency = skTrans end
 
-    -- corner: only touch if rounding actually changed
+    -- gradient (applies to the fill)
+    applyGradient(grad, p)
+
+    -- corner rounding
     if obj._lastRounding ~= p.Rounding then
         obj._lastRounding = p.Rounding
         local corner = obj._corner
@@ -168,7 +199,6 @@ local function applyText(obj)
     local pos = UDim2.new(0, p.Position.X, 0, p.Position.Y)
     if l.Position ~= pos then l.Position = pos end
 
-    -- alignment / anchor: only touch when the mode actually changes
     local mode = p.Center and "center" or (p.Right and "right" or "left")
     if obj._lastAlign ~= mode then
         obj._lastAlign = mode
@@ -190,7 +220,6 @@ local function applyText(obj)
 end
 
 -- ── LINE ────────────────────────────────────────────────────────────
--- Rotated around its midpoint so From/To stay pinned correctly.
 applyLine = function(obj)
     local p     = obj._props
     local from  = p.From
@@ -226,9 +255,11 @@ applyLine = function(obj)
 end
 
 local function applyCircle(obj)
-    local p = obj._props
-    local f = obj._frame
-    local d = p.Radius * 2
+    local p    = obj._props
+    local f    = obj._frame
+    local sk   = obj._stroke
+    local grad = obj._gradient
+    local d    = p.Radius * 2
 
     if f.Visible ~= p.Visible then f.Visible = p.Visible end
     if f.ZIndex  ~= p.ZIndex  then f.ZIndex  = p.ZIndex  end
@@ -239,12 +270,12 @@ local function applyCircle(obj)
     local pos = UDim2.new(0, p.Position.X, 0, p.Position.Y)
     if f.Position ~= pos then f.Position = pos end
 
-    if f.BackgroundColor3 ~= p.Color then f.BackgroundColor3 = p.Color end
+    local fillColor = p.FillColor or p.Color
+    if f.BackgroundColor3 ~= fillColor then f.BackgroundColor3 = fillColor end
 
-    local bgTrans = p.Filled and c01(p.Transparency) or 1
+    local bgTrans = p.Filled and c01(p.FillTransparency) or 1
     if f.BackgroundTransparency ~= bgTrans then f.BackgroundTransparency = bgTrans end
 
-    local sk = obj._stroke
     if sk.Color ~= p.Color then sk.Color = p.Color end
     if sk.Thickness ~= p.Thickness then sk.Thickness = p.Thickness end
 
@@ -253,8 +284,11 @@ local function applyCircle(obj)
 
     local skTrans = c01(p.Transparency)
     if sk.Transparency ~= skTrans then sk.Transparency = skTrans end
+
+    applyGradient(grad, p)
 end
 
+-- pooled scratch table for polygon points
 local _scratchPts = {}
 
 local function applySegments(obj, pts, n)
@@ -333,12 +367,19 @@ local function newSquare()
     f.BackgroundTransparency = 1; f.Size = UDim2.new(0,0,0,0)
     f.Visible = false
     f.Parent = ScreenGui
+
     local sk = Instance.new("UIStroke")
     sk.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
     sk.Thickness = 1
     sk.Parent = f
+
+    local grad = Instance.new("UIGradient")
+    grad.Enabled = false
+    grad.Parent = f
+
     return {
-        _tag = TAG.Square, _frame = f, _stroke = sk, _corner = nil, _lastRounding = 0,
+        _tag = TAG.Square, _frame = f, _stroke = sk, _gradient = grad,
+        _corner = nil, _lastRounding = 0,
         _props = shallowCopy(DEFAULTS.Square),
     }
 end
@@ -375,12 +416,19 @@ local function newCircle()
     f.BackgroundTransparency = 1; f.AnchorPoint = Vector2.new(0.5,0.5)
     f.Size = UDim2.new(0,0,0,0); f.Visible = false
     f.Parent = ScreenGui
+
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(1,0); corner.Parent = f
+
     local sk = Instance.new("UIStroke")
     sk.ApplyStrokeMode = Enum.ApplyStrokeMode.Border; sk.Thickness = 1; sk.Parent = f
+
+    local grad = Instance.new("UIGradient")
+    grad.Enabled = false
+    grad.Parent = f
+
     return {
-        _tag = TAG.Circle, _frame = f, _stroke = sk,
+        _tag = TAG.Circle, _frame = f, _stroke = sk, _gradient = grad,
         _props = shallowCopy(DEFAULTS.Circle),
     }
 end
@@ -437,9 +485,10 @@ local APPLIERS = {
 
 local REMOVERS = {
     [TAG.Square] = function(o)
-        if o._corner then o._corner:Destroy(); o._corner = nil end
-        if o._stroke then o._stroke:Destroy(); o._stroke = nil end
-        if o._frame  then o._frame:Destroy();  o._frame  = nil end
+        if o._gradient then o._gradient:Destroy(); o._gradient = nil end
+        if o._corner   then o._corner:Destroy();   o._corner   = nil end
+        if o._stroke   then o._stroke:Destroy();   o._stroke   = nil end
+        if o._frame    then o._frame:Destroy();    o._frame    = nil end
         o._props = nil
     end,
     [TAG.Text] = function(o)
@@ -451,8 +500,9 @@ local REMOVERS = {
         o._props = nil
     end,
     [TAG.Circle] = function(o)
-        if o._stroke then o._stroke:Destroy(); o._stroke = nil end
-        if o._frame  then o._frame:Destroy();  o._frame  = nil end
+        if o._gradient then o._gradient:Destroy(); o._gradient = nil end
+        if o._stroke   then o._stroke:Destroy();   o._stroke   = nil end
+        if o._frame    then o._frame:Destroy();    o._frame    = nil end
         o._props = nil
     end,
     [TAG.Quad] = function(o)
@@ -509,21 +559,38 @@ function Draw.new(kind)
             if props then
                 local v = props[k]
                 if v ~= nil then return v end
+                -- allow reading keys whose default is nil/false explicitly
+                if k == "OutlineColor" or k == "FillColor"
+                    or k == "Gradient" or k == "GradientTransparency" then
+                    return props[k]
+                end
             end
             return nil
         end,
         __newindex = function(_, k, v)
             if removed then return end
             local props = obj._props
-            if props and props[k] ~= nil and props[k] ~= v then
-                props[k] = v
-                if applier then applier(obj) end
-            elseif props and props[k] == nil then
-                -- allow setting keys that exist as nil-valued defaults too
-                -- (e.g. OutlineColor=false on Square)
-                if k == "OutlineColor" and props.OutlineColor == nil then
-                    props.OutlineColor = v
-                    if applier then applier(obj) end
+            if not props then return end
+            if props[k] ~= v then
+                -- only allow writing keys that exist in the defaults table
+                if rawget(props, k) ~= nil or props[k] == nil then
+                    -- check key is a recognized property name
+                    local recognized = false
+                    for key in pairs(DEFAULTS[
+                        obj._tag == TAG.Square and "Square"
+                        or obj._tag == TAG.Text and "Text"
+                        or obj._tag == TAG.Line and "Line"
+                        or obj._tag == TAG.Circle and "Circle"
+                        or obj._tag == TAG.Quad and "Quad"
+                        or obj._tag == TAG.Triangle and "Triangle"
+                        or "Image"
+                    ]) do
+                        if key == k then recognized = true break end
+                    end
+                    if recognized then
+                        props[k] = v
+                        if applier then applier(obj) end
+                    end
                 end
             end
         end,
@@ -533,7 +600,6 @@ function Draw.new(kind)
     return handle
 end
 
--- Clear destroys all live drawing objects properly (no leaked Instances)
 function Draw.Clear()
     for obj in pairs(_liveObjects) do
         local remover = REMOVERS[obj._tag]
@@ -541,7 +607,6 @@ function Draw.Clear()
     end
     _liveObjects = setmetatable({}, { __mode = "k" })
 
-    -- safety net: destroy any stray children too
     for _, child in ipairs(ScreenGui:GetChildren()) do
         child:Destroy()
     end
