@@ -1,18 +1,44 @@
 local Draw = {}
 
 local CoreGui   = game:GetService("CoreGui")
+local Players   = game:GetService("Players")
+local Camera    = workspace.CurrentCamera
+
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name            = "DrawLibCanvas"
-ScreenGui.ResetOnSpawn    = false
-ScreenGui.IgnoreGuiInset  = true
-ScreenGui.DisplayOrder    = 999
-ScreenGui.ZIndexBehavior  = Enum.ZIndexBehavior.Sibling
+ScreenGui.Name           = "DrawLibCanvas"
+ScreenGui.ResetOnSpawn   = false
+ScreenGui.IgnoreGuiInset = true
+ScreenGui.DisplayOrder   = 999
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 pcall(function() ScreenGui.Parent = CoreGui end)
 if not ScreenGui.Parent then
-    ScreenGui.Parent = game:GetService("Players").LocalPlayer
-                           :WaitForChild("PlayerGui")
+    ScreenGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
 end
 Draw.ScreenGui = ScreenGui
+
+-- expose viewport size, kept up to date
+Draw.ViewportSize = Camera and Camera.ViewportSize or Vector2.new(1920, 1080)
+
+workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
+    Camera = workspace.CurrentCamera
+    if Camera then
+        Draw.ViewportSize = Camera.ViewportSize
+        Camera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+            Draw.ViewportSize = Camera.ViewportSize
+        end)
+    end
+end)
+
+if Camera then
+    Camera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+        Draw.ViewportSize = Camera.ViewportSize
+    end)
+end
+
+-- helper: get the current screen center, useful for tracers etc.
+function Draw.GetCenter()
+    return Vector2.new(Draw.ViewportSize.X * 0.5, Draw.ViewportSize.Y * 0.5)
+end
 
 local function c01(n) return math.clamp(n, 0, 1) end
 
@@ -26,6 +52,52 @@ local TAG = {
     Image    = {},
 }
 
+-- ── DEFAULTS (used both for init and dirty-diffing) ───────────────────
+local DEFAULTS = {
+    Square = {
+        Visible=false, ZIndex=1, Color=Color3.new(1,1,1), Transparency=0,
+        Size=Vector2.new(0,0), Position=Vector2.new(0,0),
+        Thickness=1, Filled=false, Rounding=0, OutlineColor=false,
+    },
+    Text = {
+        Visible=false, ZIndex=1, Color=Color3.new(1,1,1), Transparency=0,
+        Text="", Size=14, Position=Vector2.new(0,0),
+        Center=false, Right=false, Outline=false,
+        OutlineColor=Color3.new(0,0,0), Font=Enum.Font.Code,
+    },
+    Line = {
+        Visible=false, ZIndex=1, Color=Color3.new(1,1,1), Transparency=0,
+        From=Vector2.new(0,0), To=Vector2.new(0,0), Thickness=1,
+    },
+    Circle = {
+        Visible=false, ZIndex=1, Color=Color3.new(1,1,1), Transparency=0,
+        Position=Vector2.new(0,0), Radius=0, Thickness=1, Filled=false, NumSides=0,
+    },
+    Quad = {
+        Visible=false, ZIndex=1, Color=Color3.new(1,1,1), Transparency=0, Thickness=1,
+        PointA=Vector2.new(0,0), PointB=Vector2.new(0,0),
+        PointC=Vector2.new(0,0), PointD=Vector2.new(0,0),
+    },
+    Triangle = {
+        Visible=false, ZIndex=1, Color=Color3.new(1,1,1), Transparency=0, Thickness=1,
+        PointA=Vector2.new(0,0), PointB=Vector2.new(0,0), PointC=Vector2.new(0,0),
+    },
+    Image = {
+        Visible=false, ZIndex=1, Color=Color3.new(1,1,1), Transparency=0,
+        Position=Vector2.new(0,0), Size=Vector2.new(32,32), Data="", Rounding=0,
+    },
+}
+
+local function shallowCopy(t)
+    local o = {}
+    for k, v in pairs(t) do o[k] = v end
+    return o
+end
+
+-- ── APPLIERS ───────────────────────────────────────────────────────────
+-- Each applier writes only the Instance properties that actually changed,
+-- tracked via obj._dirty (set true on __newindex writes that matter).
+
 local applyLine
 
 local function applySquare(obj)
@@ -33,26 +105,45 @@ local function applySquare(obj)
     local f  = obj._frame
     local sk = obj._stroke
 
-    f.Visible                = p.Visible
-    f.ZIndex                 = p.ZIndex
-    f.Size                   = UDim2.new(0, p.Size.X,     0, p.Size.Y)
-    f.Position               = UDim2.new(0, p.Position.X, 0, p.Position.Y)
-    f.BackgroundColor3       = p.Color
-    f.BackgroundTransparency = p.Filled and c01(p.Transparency) or 1
+    if f.Visible ~= p.Visible then f.Visible = p.Visible end
+    if f.ZIndex  ~= p.ZIndex  then f.ZIndex  = p.ZIndex  end
 
-    sk.Color        = p.OutlineColor or p.Color
-    sk.Thickness    = p.Thickness
-    sk.Enabled      = not p.Filled and p.Thickness > 0
-    sk.Transparency = c01(p.Transparency)
+    local size = UDim2.new(0, p.Size.X, 0, p.Size.Y)
+    if f.Size ~= size then f.Size = size end
 
-    local corner = f:FindFirstChildOfClass("UICorner")
-    if p.Rounding and p.Rounding > 0 then
-        if not corner then
-            corner = Instance.new("UICorner"); corner.Parent = f
+    local pos = UDim2.new(0, p.Position.X, 0, p.Position.Y)
+    if f.Position ~= pos then f.Position = pos end
+
+    if f.BackgroundColor3 ~= p.Color then f.BackgroundColor3 = p.Color end
+
+    local bgTrans = p.Filled and c01(p.Transparency) or 1
+    if f.BackgroundTransparency ~= bgTrans then f.BackgroundTransparency = bgTrans end
+
+    local outlineColor = p.OutlineColor or p.Color
+    if sk.Color ~= outlineColor then sk.Color = outlineColor end
+    if sk.Thickness ~= p.Thickness then sk.Thickness = p.Thickness end
+
+    local skEnabled = not p.Filled and p.Thickness > 0
+    if sk.Enabled ~= skEnabled then sk.Enabled = skEnabled end
+
+    local skTrans = c01(p.Transparency)
+    if sk.Transparency ~= skTrans then sk.Transparency = skTrans end
+
+    -- corner: only touch if rounding actually changed
+    if obj._lastRounding ~= p.Rounding then
+        obj._lastRounding = p.Rounding
+        local corner = obj._corner
+        if p.Rounding and p.Rounding > 0 then
+            if not corner then
+                corner = Instance.new("UICorner")
+                corner.Parent = f
+                obj._corner = corner
+            end
+            corner.CornerRadius = UDim.new(0, p.Rounding)
+        elseif corner then
+            corner:Destroy()
+            obj._corner = nil
         end
-        corner.CornerRadius = UDim.new(0, p.Rounding)
-    elseif corner then
-        corner:Destroy()
     end
 end
 
@@ -60,77 +151,78 @@ local function applyText(obj)
     local p = obj._props
     local l = obj._label
 
-    l.Visible          = p.Visible
-    l.ZIndex           = p.ZIndex
-    l.Text             = tostring(p.Text)
-    l.TextSize         = p.Size
-    l.TextColor3       = p.Color
-    l.TextTransparency = c01(p.Transparency)
-    l.Font             = p.Font
-    l.Position         = UDim2.new(0, p.Position.X, 0, p.Position.Y)
+    if l.Visible ~= p.Visible then l.Visible = p.Visible end
+    if l.ZIndex  ~= p.ZIndex  then l.ZIndex  = p.ZIndex  end
 
-    if p.Center then
-        l.TextXAlignment = Enum.TextXAlignment.Center
-        l.AnchorPoint    = Vector2.new(0.5, 0)
-    elseif p.Right then
-        l.TextXAlignment = Enum.TextXAlignment.Right
-        l.AnchorPoint    = Vector2.new(1, 0)
-    else
-        l.TextXAlignment = Enum.TextXAlignment.Left
-        l.AnchorPoint    = Vector2.new(0, 0)
+    local text = tostring(p.Text)
+    if l.Text ~= text then l.Text = text end
+
+    if l.TextSize ~= p.Size then l.TextSize = p.Size end
+    if l.TextColor3 ~= p.Color then l.TextColor3 = p.Color end
+
+    local trans = c01(p.Transparency)
+    if l.TextTransparency ~= trans then l.TextTransparency = trans end
+
+    if l.Font ~= p.Font then l.Font = p.Font end
+
+    local pos = UDim2.new(0, p.Position.X, 0, p.Position.Y)
+    if l.Position ~= pos then l.Position = pos end
+
+    -- alignment / anchor: only touch when the mode actually changes
+    local mode = p.Center and "center" or (p.Right and "right" or "left")
+    if obj._lastAlign ~= mode then
+        obj._lastAlign = mode
+        if mode == "center" then
+            l.TextXAlignment = Enum.TextXAlignment.Center
+            l.AnchorPoint    = Vector2.new(0.5, 0)
+        elseif mode == "right" then
+            l.TextXAlignment = Enum.TextXAlignment.Right
+            l.AnchorPoint    = Vector2.new(1, 0)
+        else
+            l.TextXAlignment = Enum.TextXAlignment.Left
+            l.AnchorPoint    = Vector2.new(0, 0)
+        end
     end
 
-    l.TextStrokeTransparency = p.Outline and c01(p.Transparency) or 1
-    l.TextStrokeColor3       = p.OutlineColor
+    local strokeTrans = p.Outline and trans or 1
+    if l.TextStrokeTransparency ~= strokeTrans then l.TextStrokeTransparency = strokeTrans end
+    if l.TextStrokeColor3 ~= p.OutlineColor then l.TextStrokeColor3 = p.OutlineColor end
 end
 
--- ── LINE (proper math, no rotation pivot issues) ──────────────────────
---
--- Roblox rotates GUI frames around their CENTER, not their corner.
--- No anchor trick fixes this because the pivot is always the center.
---
--- Solution: place the frame so its CENTER sits at the MIDPOINT of the
--- line From→To. The frame's width = length of the line, height = thickness.
--- Then rotate around that center — which IS the midpoint, so From stays
--- pinned exactly where it should be.
---
--- AnchorPoint (0.5, 0.5) + Position = midpoint of From→To
--- This makes Roblox rotate the frame around the line's midpoint,
--- which keeps both From and To exactly where they need to be.
---
--- Why this works with GetScreenPosition:
--- GetScreenPosition returns Vector2(ScreenPos.X, ScreenPos.Y) from
--- WorldToViewportPoint — these are already in the same screen pixel
--- space that UDim2 offset uses, so no extra conversion needed.
+-- ── LINE ────────────────────────────────────────────────────────────
+-- Rotated around its midpoint so From/To stay pinned correctly.
 applyLine = function(obj)
     local p     = obj._props
     local from  = p.From
     local to    = p.To
     local delta = to - from
     local len   = delta.Magnitude
+    local f     = obj._frame
 
-    if len == 0 then
-        obj._frame.Visible = false
+    if len == 0 or not p.Visible then
+        if f.Visible then f.Visible = false end
         return
     end
 
-    local thick   = math.max(p.Thickness, 1)
-    local angle   = math.deg(math.atan2(delta.Y, delta.X))
-    -- midpoint of the line in screen space
-    local midX    = (from.X + to.X) * 0.5
-    local midY    = (from.Y + to.Y) * 0.5
+    local thick = p.Thickness > 1 and p.Thickness or 1
+    local angle = math.deg(math.atan2(delta.Y, delta.X))
+    local midX  = (from.X + to.X) * 0.5
+    local midY  = (from.Y + to.Y) * 0.5
 
-    local f = obj._frame
-    f.ZIndex                 = p.ZIndex
-    f.BackgroundColor3       = p.Color
-    f.BackgroundTransparency = c01(p.Transparency)
-    -- anchor at center so Roblox rotates around the midpoint
-    f.AnchorPoint            = Vector2.new(0.5, 0.5)
-    f.Size                   = UDim2.new(0, len, 0, thick)
-    -- position IS the midpoint — anchor(0.5,0.5) centers the frame here
-    f.Position               = UDim2.new(0, midX, 0, midY)
-    f.Rotation               = angle
-    f.Visible                = p.Visible
+    if f.ZIndex ~= p.ZIndex then f.ZIndex = p.ZIndex end
+    if f.BackgroundColor3 ~= p.Color then f.BackgroundColor3 = p.Color end
+
+    local trans = c01(p.Transparency)
+    if f.BackgroundTransparency ~= trans then f.BackgroundTransparency = trans end
+
+    local size = UDim2.new(0, len, 0, thick)
+    if f.Size ~= size then f.Size = size end
+
+    local pos = UDim2.new(0, midX, 0, midY)
+    if f.Position ~= pos then f.Position = pos end
+
+    if f.Rotation ~= angle then f.Rotation = angle end
+    if not f.Visible then f.Visible = true end
 end
 
 local function applyCircle(obj)
@@ -138,25 +230,39 @@ local function applyCircle(obj)
     local f = obj._frame
     local d = p.Radius * 2
 
-    f.Visible                = p.Visible
-    f.ZIndex                 = p.ZIndex
-    f.AnchorPoint            = Vector2.new(0.5, 0.5)
-    f.Size                   = UDim2.new(0, d, 0, d)
-    f.Position               = UDim2.new(0, p.Position.X, 0, p.Position.Y)
-    f.BackgroundColor3       = p.Color
-    f.BackgroundTransparency = p.Filled and c01(p.Transparency) or 1
+    if f.Visible ~= p.Visible then f.Visible = p.Visible end
+    if f.ZIndex  ~= p.ZIndex  then f.ZIndex  = p.ZIndex  end
 
-    obj._stroke.Color        = p.Color
-    obj._stroke.Thickness    = p.Thickness
-    obj._stroke.Enabled      = p.Thickness > 0
-    obj._stroke.Transparency = c01(p.Transparency)
+    local size = UDim2.new(0, d, 0, d)
+    if f.Size ~= size then f.Size = size end
+
+    local pos = UDim2.new(0, p.Position.X, 0, p.Position.Y)
+    if f.Position ~= pos then f.Position = pos end
+
+    if f.BackgroundColor3 ~= p.Color then f.BackgroundColor3 = p.Color end
+
+    local bgTrans = p.Filled and c01(p.Transparency) or 1
+    if f.BackgroundTransparency ~= bgTrans then f.BackgroundTransparency = bgTrans end
+
+    local sk = obj._stroke
+    if sk.Color ~= p.Color then sk.Color = p.Color end
+    if sk.Thickness ~= p.Thickness then sk.Thickness = p.Thickness end
+
+    local skEnabled = p.Thickness > 0
+    if sk.Enabled ~= skEnabled then sk.Enabled = skEnabled end
+
+    local skTrans = c01(p.Transparency)
+    if sk.Transparency ~= skTrans then sk.Transparency = skTrans end
 end
 
-local function applySegments(obj, pts)
+-- pooled scratch table for polygon points, avoids per-frame allocations
+local _scratchPts = {}
+
+local function applySegments(obj, pts, n)
     local p = obj._props
-    local n = #pts
-    for i, seg in ipairs(obj._segments) do
-        local sp        = seg._props
+    for i = 1, n do
+        local seg = obj._segments[i]
+        local sp  = seg._props
         sp.Visible      = p.Visible
         sp.ZIndex       = p.ZIndex
         sp.Color        = p.Color
@@ -170,51 +276,71 @@ end
 
 local function applyQuad(obj)
     local p = obj._props
-    applySegments(obj, { p.PointA, p.PointB, p.PointC, p.PointD })
+    _scratchPts[1] = p.PointA
+    _scratchPts[2] = p.PointB
+    _scratchPts[3] = p.PointC
+    _scratchPts[4] = p.PointD
+    applySegments(obj, _scratchPts, 4)
 end
 
 local function applyTriangle(obj)
     local p = obj._props
-    applySegments(obj, { p.PointA, p.PointB, p.PointC })
+    _scratchPts[1] = p.PointA
+    _scratchPts[2] = p.PointB
+    _scratchPts[3] = p.PointC
+    applySegments(obj, _scratchPts, 3)
 end
 
 local function applyImage(obj)
     local p = obj._props
     local i = obj._img
 
-    i.Visible           = p.Visible
-    i.ZIndex            = p.ZIndex
-    i.Image             = p.Data
-    i.ImageColor3       = p.Color
-    i.ImageTransparency = c01(p.Transparency)
-    i.Size              = UDim2.new(0, p.Size.X,     0, p.Size.Y)
-    i.Position          = UDim2.new(0, p.Position.X, 0, p.Position.Y)
+    if i.Visible ~= p.Visible then i.Visible = p.Visible end
+    if i.ZIndex  ~= p.ZIndex  then i.ZIndex  = p.ZIndex  end
+    if i.Image   ~= p.Data    then i.Image   = p.Data    end
+    if i.ImageColor3 ~= p.Color then i.ImageColor3 = p.Color end
 
-    local corner = i:FindFirstChildOfClass("UICorner")
-    if p.Rounding and p.Rounding > 0 then
-        if not corner then
-            corner = Instance.new("UICorner"); corner.Parent = i
+    local trans = c01(p.Transparency)
+    if i.ImageTransparency ~= trans then i.ImageTransparency = trans end
+
+    local size = UDim2.new(0, p.Size.X, 0, p.Size.Y)
+    if i.Size ~= size then i.Size = size end
+
+    local pos = UDim2.new(0, p.Position.X, 0, p.Position.Y)
+    if i.Position ~= pos then i.Position = pos end
+
+    if obj._lastRounding ~= p.Rounding then
+        obj._lastRounding = p.Rounding
+        local corner = obj._corner
+        if p.Rounding and p.Rounding > 0 then
+            if not corner then
+                corner = Instance.new("UICorner")
+                corner.Parent = i
+                obj._corner = corner
+            end
+            corner.CornerRadius = UDim.new(0, p.Rounding)
+        elseif corner then
+            corner:Destroy()
+            obj._corner = nil
         end
-        corner.CornerRadius = UDim.new(0, p.Rounding)
-    elseif corner then
-        corner:Destroy()
     end
 end
+
+-- ── CONSTRUCTORS ────────────────────────────────────────────────────
 
 local function newSquare()
     local f = Instance.new("Frame")
     f.Name = "Draw_Square"; f.BorderSizePixel = 0
     f.BackgroundTransparency = 1; f.Size = UDim2.new(0,0,0,0)
+    f.Visible = false
     f.Parent = ScreenGui
     local sk = Instance.new("UIStroke")
-    sk.ApplyStrokeMode = Enum.ApplyStrokeMode.Border; sk.Thickness = 1; sk.Parent = f
+    sk.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    sk.Thickness = 1
+    sk.Parent = f
     return {
-        _tag = TAG.Square, _frame = f, _stroke = sk,
-        _props = {
-            Visible=false, ZIndex=1, Color=Color3.new(1,1,1), Transparency=0,
-            Size=Vector2.new(0,0), Position=Vector2.new(0,0),
-            Thickness=1, Filled=false, Rounding=0, OutlineColor=false,
-        },
+        _tag = TAG.Square, _frame = f, _stroke = sk, _corner = nil, _lastRounding = 0,
+        _props = shallowCopy(DEFAULTS.Square),
     }
 end
 
@@ -224,15 +350,11 @@ local function newText()
     l.Font = Enum.Font.Code; l.Text = ""; l.TextSize = 14
     l.TextColor3 = Color3.new(1,1,1); l.TextStrokeTransparency = 1
     l.AnchorPoint = Vector2.new(0,0); l.AutomaticSize = Enum.AutomaticSize.XY
-    l.Size = UDim2.new(0,0,0,0); l.Parent = ScreenGui
+    l.Size = UDim2.new(0,0,0,0); l.Visible = false
+    l.Parent = ScreenGui
     return {
-        _tag = TAG.Text, _label = l,
-        _props = {
-            Visible=false, ZIndex=1, Color=Color3.new(1,1,1), Transparency=0,
-            Text="", Size=14, Position=Vector2.new(0,0),
-            Center=false, Right=false, Outline=false,
-            OutlineColor=Color3.new(0,0,0), Font=Enum.Font.Code,
-        },
+        _tag = TAG.Text, _label = l, _lastAlign = "left",
+        _props = shallowCopy(DEFAULTS.Text),
     }
 end
 
@@ -244,10 +366,7 @@ local function newLine()
     f.Size = UDim2.new(0,0,0,1); f.Visible = false; f.Parent = ScreenGui
     return {
         _tag = TAG.Line, _frame = f,
-        _props = {
-            Visible=false, ZIndex=1, Color=Color3.new(1,1,1), Transparency=0,
-            From=Vector2.new(0,0), To=Vector2.new(0,0), Thickness=1,
-        },
+        _props = shallowCopy(DEFAULTS.Line),
     }
 end
 
@@ -255,17 +374,15 @@ local function newCircle()
     local f = Instance.new("Frame")
     f.Name = "Draw_Circle"; f.BorderSizePixel = 0
     f.BackgroundTransparency = 1; f.AnchorPoint = Vector2.new(0.5,0.5)
-    f.Size = UDim2.new(0,0,0,0); f.Parent = ScreenGui
+    f.Size = UDim2.new(0,0,0,0); f.Visible = false
+    f.Parent = ScreenGui
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(1,0); corner.Parent = f
     local sk = Instance.new("UIStroke")
     sk.ApplyStrokeMode = Enum.ApplyStrokeMode.Border; sk.Thickness = 1; sk.Parent = f
     return {
         _tag = TAG.Circle, _frame = f, _stroke = sk,
-        _props = {
-            Visible=false, ZIndex=1, Color=Color3.new(1,1,1), Transparency=0,
-            Position=Vector2.new(0,0), Radius=0, Thickness=1, Filled=false, NumSides=0,
-        },
+        _props = shallowCopy(DEFAULTS.Circle),
     }
 end
 
@@ -284,34 +401,28 @@ local function makeSegment()
     }
 end
 
-local function newPoly(tag, pointNames, nSegs)
+local function newPoly(tag, defaults, nSegs)
     local segs = {}
     for i = 1, nSegs do segs[i] = makeSegment() end
-    local props = {
-        Visible=false, ZIndex=1, Color=Color3.new(1,1,1), Transparency=0, Thickness=1
-    }
-    for _, name in ipairs(pointNames) do props[name] = Vector2.new(0,0) end
-    return { _tag=tag, _segments=segs, _props=props }
+    return { _tag = tag, _segments = segs, _props = shallowCopy(defaults) }
 end
 
 local function newQuad()
-    return newPoly(TAG.Quad, {"PointA","PointB","PointC","PointD"}, 4)
+    return newPoly(TAG.Quad, DEFAULTS.Quad, 4)
 end
 
 local function newTriangle()
-    return newPoly(TAG.Triangle, {"PointA","PointB","PointC"}, 3)
+    return newPoly(TAG.Triangle, DEFAULTS.Triangle, 3)
 end
 
 local function newImage()
     local i = Instance.new("ImageLabel")
     i.Name = "Draw_Image"; i.BackgroundTransparency = 1
-    i.BorderSizePixel = 0; i.Parent = ScreenGui
+    i.BorderSizePixel = 0; i.Visible = false
+    i.Parent = ScreenGui
     return {
-        _tag = TAG.Image, _img = i,
-        _props = {
-            Visible=false, ZIndex=1, Color=Color3.new(1,1,1), Transparency=0,
-            Position=Vector2.new(0,0), Size=Vector2.new(32,32), Data="", Rounding=0,
-        },
+        _tag = TAG.Image, _img = i, _corner = nil, _lastRounding = 0,
+        _props = shallowCopy(DEFAULTS.Image),
     }
 end
 
@@ -326,19 +437,55 @@ local APPLIERS = {
 }
 
 local REMOVERS = {
-    [TAG.Square]   = function(o) if o._frame then o._frame:Destroy() end; o._frame=nil; o._stroke=nil; o._props=nil end,
-    [TAG.Text]     = function(o) if o._label then o._label:Destroy() end; o._label=nil; o._props=nil end,
-    [TAG.Line]     = function(o) if o._frame then o._frame:Destroy() end; o._frame=nil; o._props=nil end,
-    [TAG.Circle]   = function(o) if o._frame then o._frame:Destroy() end; o._frame=nil; o._stroke=nil; o._props=nil end,
-    [TAG.Quad]     = function(o) for _,s in ipairs(o._segments or {}) do if s._frame then s._frame:Destroy() end end; o._segments={}; o._props=nil end,
-    [TAG.Triangle] = function(o) for _,s in ipairs(o._segments or {}) do if s._frame then s._frame:Destroy() end end; o._segments={}; o._props=nil end,
-    [TAG.Image]    = function(o) if o._img then o._img:Destroy() end; o._img=nil; o._props=nil end,
+    [TAG.Square] = function(o)
+        if o._corner then o._corner:Destroy(); o._corner = nil end
+        if o._stroke then o._stroke:Destroy(); o._stroke = nil end
+        if o._frame  then o._frame:Destroy();  o._frame  = nil end
+        o._props = nil
+    end,
+    [TAG.Text] = function(o)
+        if o._label then o._label:Destroy(); o._label = nil end
+        o._props = nil
+    end,
+    [TAG.Line] = function(o)
+        if o._frame then o._frame:Destroy(); o._frame = nil end
+        o._props = nil
+    end,
+    [TAG.Circle] = function(o)
+        if o._stroke then o._stroke:Destroy(); o._stroke = nil end
+        if o._frame  then o._frame:Destroy();  o._frame  = nil end
+        o._props = nil
+    end,
+    [TAG.Quad] = function(o)
+        for _, s in ipairs(o._segments or {}) do
+            if s._frame then s._frame:Destroy() end
+            s._props = nil
+        end
+        o._segments = nil
+        o._props = nil
+    end,
+    [TAG.Triangle] = function(o)
+        for _, s in ipairs(o._segments or {}) do
+            if s._frame then s._frame:Destroy() end
+            s._props = nil
+        end
+        o._segments = nil
+        o._props = nil
+    end,
+    [TAG.Image] = function(o)
+        if o._corner then o._corner:Destroy(); o._corner = nil end
+        if o._img    then o._img:Destroy();    o._img    = nil end
+        o._props = nil
+    end,
 }
 
 local CONSTRUCTORS = {
     Square=newSquare, Text=newText, Line=newLine, Circle=newCircle,
     Quad=newQuad, Triangle=newTriangle, Image=newImage,
 }
+
+-- track all live objects so Clear() can wipe them properly
+local _liveObjects = setmetatable({}, { __mode = "k" })
 
 function Draw.new(kind)
     local ctor = CONSTRUCTORS[kind]
@@ -348,12 +495,13 @@ function Draw.new(kind)
     local remover = REMOVERS[obj._tag]
     local removed = false
 
-    return setmetatable({}, {
+    local handle = setmetatable({}, {
         __index = function(_, k)
             if k == "Remove" or k == "Destroy" then
                 return function()
                     if removed then return end
                     removed = true
+                    _liveObjects[obj] = nil
                     if remover then remover(obj) end
                 end
             end
@@ -368,16 +516,36 @@ function Draw.new(kind)
         __newindex = function(_, k, v)
             if removed then return end
             local props = obj._props
-            if props and props[k] ~= nil then
+            if props and props[k] ~= nil and props[k] ~= v then
                 props[k] = v
                 if applier then applier(obj) end
+            elseif props and props[k] == nil then
+                -- allow setting keys that exist as nil-valued defaults too
+                -- (e.g. OutlineColor=false on Square)
+                if k == "OutlineColor" and props.OutlineColor == nil then
+                    props.OutlineColor = v
+                    if applier then applier(obj) end
+                end
             end
         end,
     })
+
+    _liveObjects[obj] = obj
+    return handle
 end
 
+-- Clear destroys all live drawing objects properly (no leaked Instances)
 function Draw.Clear()
-    for _, child in ipairs(ScreenGui:GetChildren()) do child:Destroy() end
+    for obj in pairs(_liveObjects) do
+        local remover = REMOVERS[obj._tag]
+        if remover then remover(obj) end
+    end
+    _liveObjects = setmetatable({}, { __mode = "k" })
+
+    -- safety net: destroy any stray children too
+    for _, child in ipairs(ScreenGui:GetChildren()) do
+        child:Destroy()
+    end
 end
 
 return Draw
