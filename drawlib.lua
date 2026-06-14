@@ -1,4 +1,3 @@
-
 local Draw = {}
 
 local CoreGui   = game:GetService("CoreGui")
@@ -27,9 +26,8 @@ local TAG = {
     Image    = {},
 }
 
-local applyLine 
+local applyLine
 
--- ── Square ────────────────────────────────────────────────────────────
 local function applySquare(obj)
     local p  = obj._props
     local f  = obj._frame
@@ -86,44 +84,36 @@ local function applyText(obj)
     l.TextStrokeColor3       = p.OutlineColor
 end
 
+-- THE FIX:
+-- AnchorPoint stays (0,0) always — never touch it in applyLine.
+-- Roblox rotates a frame around its TOP-LEFT corner (before anchor).
+-- So we manually shift the frame UP by half the thickness so the
+-- rotation pivot (top-left) lands exactly on the From point's centre.
+-- This means lines draw correctly from From→To regardless of camera.
 applyLine = function(obj)
-    local p = obj._props
+    local p     = obj._props
+    local from  = p.From
+    local to    = p.To
+    local delta = to - from
+    local len   = delta.Magnitude
+    local thick = math.max(p.Thickness, 1)
 
-    local from = p.From
-    local to = p.To
-
-    local dx = to.X - from.X
-    local dy = to.Y - from.Y
-
-    local length = math.sqrt(dx * dx + dy * dy)
-
-    local frame = obj._frame
-
-    frame.Visible = p.Visible and length > 0
-    frame.ZIndex = p.ZIndex
-    frame.BackgroundColor3 = p.Color
-    frame.BackgroundTransparency = c01(p.Transparency)
-
-    frame.AnchorPoint = Vector2.new(0, 0.5)
-
-    frame.Position = UDim2.fromOffset(
-        from.X,
-        from.Y
-    )
-
-    frame.Size = UDim2.fromOffset(
-        length,
-        math.max(1, p.Thickness)
-    )
-
-    frame.Rotation = math.deg(math.atan2(dy, dx))
+    local f = obj._frame
+    f.ZIndex                 = p.ZIndex
+    f.BackgroundColor3       = p.Color
+    f.BackgroundTransparency = c01(p.Transparency)
+    f.AnchorPoint            = Vector2.new(0, 0)
+    f.Size                   = UDim2.new(0, len, 0, thick)
+    f.Position               = UDim2.new(0, from.X, 0, from.Y - thick * 0.5)
+    f.Rotation               = math.deg(math.atan2(delta.Y, delta.X))
+    f.Visible                = p.Visible and len > 0
 end
 
 local function applyCircle(obj)
     local p = obj._props
     local f = obj._frame
     local d = p.Radius * 2
-    
+
     f.Visible                = p.Visible
     f.ZIndex                 = p.ZIndex
     f.AnchorPoint            = Vector2.new(0.5, 0.5)
@@ -226,7 +216,7 @@ local function newLine()
     local f = Instance.new("Frame")
     f.Name = "Draw_Line"; f.BorderSizePixel = 0
     f.BackgroundColor3 = Color3.new(1,1,1)
-    f.AnchorPoint = Vector2.new(0,0)   -- no anchor, we handle offset manually
+    f.AnchorPoint = Vector2.new(0, 0)  -- always (0,0), applyLine handles Y offset
     f.Size = UDim2.new(0,0,0,1); f.Visible = false; f.Parent = ScreenGui
     return {
         _tag = TAG.Line, _frame = f,
@@ -259,7 +249,7 @@ local function makeSegment()
     local f = Instance.new("Frame")
     f.Name = "Draw_Seg"; f.BorderSizePixel = 0
     f.BackgroundColor3 = Color3.new(1,1,1)
-    f.AnchorPoint = Vector2.new(0,0)
+    f.AnchorPoint = Vector2.new(0, 0)
     f.Size = UDim2.new(0,0,0,1); f.Visible = false; f.Parent = ScreenGui
     return {
         _frame = f,
@@ -273,7 +263,9 @@ end
 local function newPoly(tag, pointNames, nSegs)
     local segs = {}
     for i = 1, nSegs do segs[i] = makeSegment() end
-    local props = { Visible=false, ZIndex=1, Color=Color3.new(1,1,1), Transparency=0, Thickness=1 }
+    local props = {
+        Visible=false, ZIndex=1, Color=Color3.new(1,1,1), Transparency=0, Thickness=1
+    }
     for _, name in ipairs(pointNames) do props[name] = Vector2.new(0,0) end
     return { _tag=tag, _segments=segs, _props=props }
 end
@@ -299,7 +291,6 @@ local function newImage()
     }
 end
 
--- ── Dispatch ──────────────────────────────────────────────────────────
 local APPLIERS = {
     [TAG.Square]   = applySquare,
     [TAG.Text]     = applyText,
