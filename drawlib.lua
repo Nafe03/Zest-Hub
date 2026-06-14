@@ -109,7 +109,6 @@ applyLine = function(obj)
     frame.BackgroundColor3 = p.Color
     frame.BackgroundTransparency = math.clamp(p.Transparency, 0, 1)
 
-    frame.AnchorPoint = Vector2.new(0, 0.5)
 
     frame.Position = UDim2.fromOffset(
         from.X,
