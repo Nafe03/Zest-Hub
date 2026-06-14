@@ -575,11 +575,11 @@ function Draw.new(kind)
         __index = function(_, k)
             if k == "Remove" or k == "Destroy" then
                 return function()
-                    if removed then return end
-                    removed = true
-                    _liveObjects[obj] = nil
-                    if remover then remover(obj) end
-                end
+    if removed then return end
+    removed = true
+    ActiveObjects[obj] = nil
+    if remover then remover(obj) end
+end
             end
             if k == "TextBounds" and obj._label then return obj._label.TextBounds end
             local props = obj._props
@@ -631,11 +631,11 @@ function Draw.new(kind)
 end
 
 function Draw.Clear()
-    for obj in pairs(_liveObjects) do
+    for obj in pairs(ActiveObjects) do
         local remover = REMOVERS[obj._tag]
         if remover then remover(obj) end
     end
-    _liveObjects = setmetatable({}, { __mode = "k" })
+    ActiveObjects = setmetatable({}, { __mode = "k" })
 
     for _, child in ipairs(ScreenGui:GetChildren()) do
         child:Destroy()
