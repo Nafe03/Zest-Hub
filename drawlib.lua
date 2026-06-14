@@ -1,26 +1,3 @@
---[[
-    drawlib.lua  v4
-    ─────────────────────────────────────────────────────────────────────
-    ROOT FIX (v4): Lines no longer use AnchorPoint.
-    AnchorPoint on a pixel-positioned UDim2 frame causes Roblox to apply
-    the anchor offset in scaled space, which shifts the pivot away from
-    the From point and makes every line drift when the camera moves.
-    Instead we manually offset the frame position by half the thickness
-    so the visual center sits on the From→To segment correctly.
-
-    SUPPORTED TYPES
-      "Square"   – rect, optional fill / rounding / OutlineColor
-      "Text"     – TextLabel, outline / center / right-align
-      "Line"     – From → To, pivot always at From
-      "Circle"   – ring or filled disc, Position = CENTER
-      "Quad"     – 4-point outline
-      "Triangle" – 3-point outline
-      "Image"    – ImageLabel, optional rounding
-
-    SHARED PROPERTIES
-      .Visible .ZIndex .Color .Transparency
-      :Remove() / :Destroy()
---]]
 
 local Draw = {}
 
@@ -50,7 +27,7 @@ local TAG = {
     Image    = {},
 }
 
-local applyLine  -- forward declare
+local applyLine 
 
 -- ── Square ────────────────────────────────────────────────────────────
 local function applySquare(obj)
@@ -81,7 +58,6 @@ local function applySquare(obj)
     end
 end
 
--- ── Text ──────────────────────────────────────────────────────────────
 local function applyText(obj)
     local p = obj._props
     local l = obj._label
@@ -111,33 +87,48 @@ local function applyText(obj)
 end
 
 applyLine = function(obj)
-    local p     = obj._props
-    local from  = p.From
-    local to    = p.To
+    local p = obj._props
+
+    local from = p.From
+    local to = p.To
+
     local delta = to - from
-    local len   = delta.Magnitude
-    local thick = math.max(p.Thickness, 1)
+    local length = delta.Magnitude
+
+    if length <= 0 then
+        obj._frame.Visible = false
+        return
+    end
+
     local angle = math.deg(math.atan2(delta.Y, delta.X))
 
-    local f = obj._frame
-    f.ZIndex                 = p.ZIndex
-    f.BackgroundColor3       = p.Color
-    f.BackgroundTransparency = c01(p.Transparency)
-    f.AnchorPoint            = Vector2.new(0, 0.5)  -- Pivot at left-middle
-    f.Size                   = UDim2.new(0, len, 0, thick)
-    f.Position               = UDim2.new(0, from.X, 0, from.Y)  -- No offset needed
-    f.Rotation               = angle
-    f.Visible                = p.Visible and len > 0
+    local frame = obj._frame
+
+    frame.Visible = p.Visible
+    frame.ZIndex = p.ZIndex
+    frame.BackgroundColor3 = p.Color
+    frame.BackgroundTransparency = math.clamp(p.Transparency, 0, 1)
+
+    frame.AnchorPoint = Vector2.new(0, 0.5)
+
+    frame.Position = UDim2.fromOffset(
+        from.X,
+        from.Y
+    )
+
+    frame.Size = UDim2.fromOffset(
+        length,
+        math.max(1, p.Thickness)
+    )
+
+    frame.Rotation = angle
 end
 
--- ── Circle ────────────────────────────────────────────────────────────
 local function applyCircle(obj)
     local p = obj._props
     local f = obj._frame
     local d = p.Radius * 2
-
-    -- AnchorPoint (0.5,0.5) is fine for Circle because we never rotate it
-    -- and the anchor offset is symmetrical — the circle stays centred.
+    
     f.Visible                = p.Visible
     f.ZIndex                 = p.ZIndex
     f.AnchorPoint            = Vector2.new(0.5, 0.5)
@@ -152,7 +143,6 @@ local function applyCircle(obj)
     obj._stroke.Transparency = c01(p.Transparency)
 end
 
--- ── Quad / Triangle (shared segments) ────────────────────────────────
 local function applySegments(obj, pts)
     local p = obj._props
     local n = #pts
@@ -179,7 +169,6 @@ local function applyTriangle(obj)
     applySegments(obj, { p.PointA, p.PointB, p.PointC })
 end
 
--- ── Image ─────────────────────────────────────────────────────────────
 local function applyImage(obj)
     local p = obj._props
     local i = obj._img
@@ -203,7 +192,6 @@ local function applyImage(obj)
     end
 end
 
--- ── Constructors ──────────────────────────────────────────────────────
 local function newSquare()
     local f = Instance.new("Frame")
     f.Name = "Draw_Square"; f.BorderSizePixel = 0
@@ -342,7 +330,6 @@ local CONSTRUCTORS = {
     Quad=newQuad, Triangle=newTriangle, Image=newImage,
 }
 
--- ── Draw.new ──────────────────────────────────────────────────────────
 function Draw.new(kind)
     local ctor = CONSTRUCTORS[kind]
     assert(ctor, "drawlib: unsupported type '" .. tostring(kind) .. "'")
@@ -379,7 +366,6 @@ function Draw.new(kind)
     })
 end
 
--- ── Draw.Clear ────────────────────────────────────────────────────────
 function Draw.Clear()
     for _, child in ipairs(ScreenGui:GetChildren()) do child:Destroy() end
 end
