@@ -110,12 +110,6 @@ local function applyText(obj)
     l.TextStrokeColor3       = p.OutlineColor
 end
 
--- ── Line (THE FIX) ────────────────────────────────────────────────────
--- NO AnchorPoint. We position the top-left of the frame manually so
--- the visual centre of the line sits exactly on the From→To segment.
--- Rotation in Roblox pivots around the frame's top-left corner (before
--- any anchor), so we shift the frame up by half its height (thickness/2)
--- to make the pivot land on the From point.
 applyLine = function(obj)
     local p     = obj._props
     local from  = p.From
@@ -129,11 +123,9 @@ applyLine = function(obj)
     f.ZIndex                 = p.ZIndex
     f.BackgroundColor3       = p.Color
     f.BackgroundTransparency = c01(p.Transparency)
-    f.AnchorPoint            = Vector2.new(0, 0)   -- no anchor!
+    f.AnchorPoint            = Vector2.new(0, 0.5)  -- Pivot at left-middle
     f.Size                   = UDim2.new(0, len, 0, thick)
-    -- Shift up by half thickness so the rotation pivot (top-left) sits
-    -- ON the From point's vertical centre.
-    f.Position               = UDim2.new(0, from.X, 0, from.Y - thick / 2)
+    f.Position               = UDim2.new(0, from.X, 0, from.Y)  -- No offset needed
     f.Rotation               = angle
     f.Visible                = p.Visible and len > 0
 end
