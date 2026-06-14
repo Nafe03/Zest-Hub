@@ -255,7 +255,6 @@ local function applyCircle(obj)
     if sk.Transparency ~= skTrans then sk.Transparency = skTrans end
 end
 
--- pooled scratch table for polygon points, avoids per-frame allocations
 local _scratchPts = {}
 
 local function applySegments(obj, pts, n)
