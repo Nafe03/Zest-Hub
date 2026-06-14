@@ -97,6 +97,16 @@ local DEFAULTS = {
     },
 }
 
+-- Keys whose *default* value is `nil` (Gradient / GradientTransparency).
+-- A table constructor like `{Gradient = nil}` never actually creates the
+-- key, so pairs(DEFAULTS.Square) never yields "Gradient" or
+-- "GradientTransparency" and the __newindex "recognized property" check
+-- below would always reject writes to them. This allow-list fixes that.
+local NILABLE_KEYS = {
+    Gradient = true,
+    GradientTransparency = true,
+}
+
 local function shallowCopy(t)
     local o = {}
     for k, v in pairs(t) do o[k] = v end
@@ -575,17 +585,19 @@ function Draw.new(kind)
                 -- only allow writing keys that exist in the defaults table
                 if rawget(props, k) ~= nil or props[k] == nil then
                     -- check key is a recognized property name
-                    local recognized = false
-                    for key in pairs(DEFAULTS[
-                        obj._tag == TAG.Square and "Square"
-                        or obj._tag == TAG.Text and "Text"
-                        or obj._tag == TAG.Line and "Line"
-                        or obj._tag == TAG.Circle and "Circle"
-                        or obj._tag == TAG.Quad and "Quad"
-                        or obj._tag == TAG.Triangle and "Triangle"
-                        or "Image"
-                    ]) do
-                        if key == k then recognized = true break end
+                    local recognized = NILABLE_KEYS[k] == true
+                    if not recognized then
+                        for key in pairs(DEFAULTS[
+                            obj._tag == TAG.Square and "Square"
+                            or obj._tag == TAG.Text and "Text"
+                            or obj._tag == TAG.Line and "Line"
+                            or obj._tag == TAG.Circle and "Circle"
+                            or obj._tag == TAG.Quad and "Quad"
+                            or obj._tag == TAG.Triangle and "Triangle"
+                            or "Image"
+                        ]) do
+                            if key == k then recognized = true break end
+                        end
                     end
                     if recognized then
                         props[k] = v
