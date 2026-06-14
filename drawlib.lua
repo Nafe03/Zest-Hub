@@ -1,43 +1,29 @@
 --[[
-    drawlib.lua  v3
+    drawlib.lua  v4
     ─────────────────────────────────────────────────────────────────────
-    Drop-in replacement for the native executor Drawing API.
-    Implemented with ScreenGui / Frame / TextLabel / UIStroke.
-
-    FIXES vs v2
-    ───────────
-    • Line AnchorPoint set to (0, 0.5) consistently — rotation pivot is
-      always the FROM point, so the line draws exactly from From → To.
-    • Line Position now correctly places the pivot AT the From point
-      (no sub-pixel offset from previous UDim2 rounding).
-    • Circle Position anchor (0.5, 0.5) so .Position is the CENTER of
-      the circle, matching native Drawing API behaviour.
-    • Square Position is top-left as expected.
-    • Text OutlineColor defaulted to black; stroke always synced.
-    • Remove() / Destroy() are idempotent — calling twice won't error.
-    • All _props keys protected: unknown writes are silently dropped.
-    • ZIndex properly propagated to all child segments in Quad/Triangle.
+    ROOT FIX (v4): Lines no longer use AnchorPoint.
+    AnchorPoint on a pixel-positioned UDim2 frame causes Roblox to apply
+    the anchor offset in scaled space, which shifts the pivot away from
+    the From point and makes every line drift when the camera moves.
+    Instead we manually offset the frame position by half the thickness
+    so the visual center sits on the From→To segment correctly.
 
     SUPPORTED TYPES
-      "Square"   – rect, optional fill / rounding / separate OutlineColor
+      "Square"   – rect, optional fill / rounding / OutlineColor
       "Text"     – TextLabel, outline / center / right-align
-      "Line"     – rotated Frame, From → To, pivot at From
-      "Circle"   – UICorner ring or filled disc, pivot at CENTER
-      "Quad"     – 4-point outline (4 Line segments)
-      "Triangle" – 3-point outline (3 Line segments)
+      "Line"     – From → To, pivot always at From
+      "Circle"   – ring or filled disc, Position = CENTER
+      "Quad"     – 4-point outline
+      "Triangle" – 3-point outline
       "Image"    – ImageLabel, optional rounding
 
-    SHARED PROPERTIES  (all types)
-      .Visible (bool)
-      .ZIndex  (number)
-      .Color   (Color3)
-      .Transparency (0–1, 0 = fully opaque)
+    SHARED PROPERTIES
+      .Visible .ZIndex .Color .Transparency
       :Remove() / :Destroy()
 --]]
 
 local Draw = {}
 
--- ─── ScreenGui (shared canvas) ───────────────────────────────────────
 local CoreGui   = game:GetService("CoreGui")
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name            = "DrawLibCanvas"
@@ -52,10 +38,8 @@ if not ScreenGui.Parent then
 end
 Draw.ScreenGui = ScreenGui
 
--- ─── Helpers ─────────────────────────────────────────────────────────
 local function c01(n) return math.clamp(n, 0, 1) end
 
--- ─── Class tags ───────────────────────────────────────────────────────
 local TAG = {
     Square   = {},
     Text     = {},
@@ -66,11 +50,9 @@ local TAG = {
     Image    = {},
 }
 
--- ─── Forward declarations ─────────────────────────────────────────────
-local applyLine
+local applyLine  -- forward declare
 
--- ─── Apply functions ──────────────────────────────────────────────────
-
+-- ── Square ────────────────────────────────────────────────────────────
 local function applySquare(obj)
     local p  = obj._props
     local f  = obj._frame
@@ -91,8 +73,7 @@ local function applySquare(obj)
     local corner = f:FindFirstChildOfClass("UICorner")
     if p.Rounding and p.Rounding > 0 then
         if not corner then
-            corner        = Instance.new("UICorner")
-            corner.Parent = f
+            corner = Instance.new("UICorner"); corner.Parent = f
         end
         corner.CornerRadius = UDim.new(0, p.Rounding)
     elseif corner then
@@ -100,6 +81,7 @@ local function applySquare(obj)
     end
 end
 
+-- ── Text ──────────────────────────────────────────────────────────────
 local function applyText(obj)
     local p = obj._props
     local l = obj._label
@@ -128,43 +110,48 @@ local function applyText(obj)
     l.TextStrokeColor3       = p.OutlineColor
 end
 
--- FIX: AnchorPoint (0, 0.5) means the frame's left-center sits AT
--- the From point. Rotation then pivots around From, so the line
--- always extends exactly from From toward To — no offset.
+-- ── Line (THE FIX) ────────────────────────────────────────────────────
+-- NO AnchorPoint. We position the top-left of the frame manually so
+-- the visual centre of the line sits exactly on the From→To segment.
+-- Rotation in Roblox pivots around the frame's top-left corner (before
+-- any anchor), so we shift the frame up by half its height (thickness/2)
+-- to make the pivot land on the From point.
 applyLine = function(obj)
     local p     = obj._props
     local from  = p.From
     local to    = p.To
     local delta = to - from
     local len   = delta.Magnitude
+    local thick = math.max(p.Thickness, 1)
+    local angle = math.deg(math.atan2(delta.Y, delta.X))
 
     local f = obj._frame
     f.ZIndex                 = p.ZIndex
     f.BackgroundColor3       = p.Color
     f.BackgroundTransparency = c01(p.Transparency)
-    -- FIX: AnchorPoint must be (0, 0.5) AND position must be set
-    -- AFTER anchor so Roblox pivots rotation around the From point
-    f.AnchorPoint            = Vector2.new(0, 0.5)
-    f.Size                   = UDim2.new(0, len, 0, math.max(p.Thickness, 1))
-    -- FIX: position is the From point directly — anchor handles the Y offset
-    f.Position               = UDim2.new(0, from.X, 0, from.Y)
-    f.Rotation               = math.deg(math.atan2(delta.Y, delta.X))
+    f.AnchorPoint            = Vector2.new(0, 0)   -- no anchor!
+    f.Size                   = UDim2.new(0, len, 0, thick)
+    -- Shift up by half thickness so the rotation pivot (top-left) sits
+    -- ON the From point's vertical centre.
+    f.Position               = UDim2.new(0, from.X, 0, from.Y - thick / 2)
+    f.Rotation               = angle
     f.Visible                = p.Visible and len > 0
 end
 
--- FIX: AnchorPoint (0.5, 0.5) so .Position is the CENTER of the
--- circle, matching native Drawing.Circle behaviour.
+-- ── Circle ────────────────────────────────────────────────────────────
 local function applyCircle(obj)
     local p = obj._props
     local f = obj._frame
     local d = p.Radius * 2
 
-    f.Visible               = p.Visible
-    f.ZIndex                = p.ZIndex
-    f.AnchorPoint           = Vector2.new(0.5, 0.5)
-    f.Size                  = UDim2.new(0, d, 0, d)
-    f.Position              = UDim2.new(0, p.Position.X, 0, p.Position.Y)
-    f.BackgroundColor3      = p.Color
+    -- AnchorPoint (0.5,0.5) is fine for Circle because we never rotate it
+    -- and the anchor offset is symmetrical — the circle stays centred.
+    f.Visible                = p.Visible
+    f.ZIndex                 = p.ZIndex
+    f.AnchorPoint            = Vector2.new(0.5, 0.5)
+    f.Size                   = UDim2.new(0, d, 0, d)
+    f.Position               = UDim2.new(0, p.Position.X, 0, p.Position.Y)
+    f.BackgroundColor3       = p.Color
     f.BackgroundTransparency = p.Filled and c01(p.Transparency) or 1
 
     obj._stroke.Color        = p.Color
@@ -173,6 +160,7 @@ local function applyCircle(obj)
     obj._stroke.Transparency = c01(p.Transparency)
 end
 
+-- ── Quad / Triangle (shared segments) ────────────────────────────────
 local function applySegments(obj, pts)
     local p = obj._props
     local n = #pts
@@ -199,6 +187,7 @@ local function applyTriangle(obj)
     applySegments(obj, { p.PointA, p.PointB, p.PointC })
 end
 
+-- ── Image ─────────────────────────────────────────────────────────────
 local function applyImage(obj)
     local p = obj._props
     local i = obj._img
@@ -214,8 +203,7 @@ local function applyImage(obj)
     local corner = i:FindFirstChildOfClass("UICorner")
     if p.Rounding and p.Rounding > 0 then
         if not corner then
-            corner        = Instance.new("UICorner")
-            corner.Parent = i
+            corner = Instance.new("UICorner"); corner.Parent = i
         end
         corner.CornerRadius = UDim.new(0, p.Rounding)
     elseif corner then
@@ -223,149 +211,86 @@ local function applyImage(obj)
     end
 end
 
--- ─── Constructors ─────────────────────────────────────────────────────
-
+-- ── Constructors ──────────────────────────────────────────────────────
 local function newSquare()
-    local f                  = Instance.new("Frame")
-    f.Name                   = "Draw_Square"
-    f.BorderSizePixel        = 0
-    f.BackgroundTransparency = 1
-    f.Size                   = UDim2.new(0, 0, 0, 0)
-    f.Parent                 = ScreenGui
-
-    local sk           = Instance.new("UIStroke")
-    sk.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-    sk.Thickness       = 1
-    sk.Parent          = f
-
+    local f = Instance.new("Frame")
+    f.Name = "Draw_Square"; f.BorderSizePixel = 0
+    f.BackgroundTransparency = 1; f.Size = UDim2.new(0,0,0,0)
+    f.Parent = ScreenGui
+    local sk = Instance.new("UIStroke")
+    sk.ApplyStrokeMode = Enum.ApplyStrokeMode.Border; sk.Thickness = 1; sk.Parent = f
     return {
         _tag = TAG.Square, _frame = f, _stroke = sk,
         _props = {
-            Visible      = false,
-            ZIndex       = 1,
-            Color        = Color3.new(1, 1, 1),
-            Transparency = 0,
-            Size         = Vector2.new(0, 0),
-            Position     = Vector2.new(0, 0),
-            Thickness    = 1,
-            Filled       = false,
-            Rounding     = 0,
-            OutlineColor = false,
+            Visible=false, ZIndex=1, Color=Color3.new(1,1,1), Transparency=0,
+            Size=Vector2.new(0,0), Position=Vector2.new(0,0),
+            Thickness=1, Filled=false, Rounding=0, OutlineColor=false,
         },
     }
 end
 
 local function newText()
-    local l                  = Instance.new("TextLabel")
-    l.Name                   = "Draw_Text"
-    l.BackgroundTransparency = 1
-    l.BorderSizePixel        = 0
-    l.Font                   = Enum.Font.Code
-    l.Text                   = ""
-    l.TextSize               = 14
-    l.TextColor3             = Color3.new(1, 1, 1)
-    l.TextStrokeTransparency = 1
-    l.AnchorPoint            = Vector2.new(0, 0)
-    l.AutomaticSize          = Enum.AutomaticSize.XY
-    l.Size                   = UDim2.new(0, 0, 0, 0)
-    l.Parent                 = ScreenGui
-
+    local l = Instance.new("TextLabel")
+    l.Name = "Draw_Text"; l.BackgroundTransparency = 1; l.BorderSizePixel = 0
+    l.Font = Enum.Font.Code; l.Text = ""; l.TextSize = 14
+    l.TextColor3 = Color3.new(1,1,1); l.TextStrokeTransparency = 1
+    l.AnchorPoint = Vector2.new(0,0); l.AutomaticSize = Enum.AutomaticSize.XY
+    l.Size = UDim2.new(0,0,0,0); l.Parent = ScreenGui
     return {
         _tag = TAG.Text, _label = l,
         _props = {
-            Visible      = false,
-            ZIndex       = 1,
-            Color        = Color3.new(1, 1, 1),
-            Transparency = 0,
-            Text         = "",
-            Size         = 14,
-            Position     = Vector2.new(0, 0),
-            Center       = false,
-            Right        = false,
-            Outline      = false,
-            OutlineColor = Color3.new(0, 0, 0),
-            Font         = Enum.Font.Code,
+            Visible=false, ZIndex=1, Color=Color3.new(1,1,1), Transparency=0,
+            Text="", Size=14, Position=Vector2.new(0,0),
+            Center=false, Right=false, Outline=false,
+            OutlineColor=Color3.new(0,0,0), Font=Enum.Font.Code,
         },
     }
 end
 
 local function newLine()
-    local f            = Instance.new("Frame")
-    f.Name             = "Draw_Line"
-    f.BorderSizePixel  = 0
-    f.BackgroundColor3 = Color3.new(1, 1, 1)
-    f.AnchorPoint      = Vector2.new(0, 0.5)
-    f.Size             = UDim2.new(0, 0, 0, 1)
-    f.Visible          = false
-    f.Parent           = ScreenGui
-
+    local f = Instance.new("Frame")
+    f.Name = "Draw_Line"; f.BorderSizePixel = 0
+    f.BackgroundColor3 = Color3.new(1,1,1)
+    f.AnchorPoint = Vector2.new(0,0)   -- no anchor, we handle offset manually
+    f.Size = UDim2.new(0,0,0,1); f.Visible = false; f.Parent = ScreenGui
     return {
         _tag = TAG.Line, _frame = f,
         _props = {
-            Visible      = false,
-            ZIndex       = 1,
-            Color        = Color3.new(1, 1, 1),
-            Transparency = 0,
-            From         = Vector2.new(0, 0),
-            To           = Vector2.new(0, 0),
-            Thickness    = 1,
+            Visible=false, ZIndex=1, Color=Color3.new(1,1,1), Transparency=0,
+            From=Vector2.new(0,0), To=Vector2.new(0,0), Thickness=1,
         },
     }
 end
 
 local function newCircle()
-    local f                  = Instance.new("Frame")
-    f.Name                   = "Draw_Circle"
-    f.BorderSizePixel        = 0
-    f.BackgroundTransparency = 1
-    f.AnchorPoint            = Vector2.new(0.5, 0.5)
-    f.Size                   = UDim2.new(0, 0, 0, 0)
-    f.Parent                 = ScreenGui
-
-    local corner            = Instance.new("UICorner")
-    corner.CornerRadius     = UDim.new(1, 0)
-    corner.Parent           = f
-
-    local sk                = Instance.new("UIStroke")
-    sk.ApplyStrokeMode      = Enum.ApplyStrokeMode.Border
-    sk.Thickness            = 1
-    sk.Parent               = f
-
+    local f = Instance.new("Frame")
+    f.Name = "Draw_Circle"; f.BorderSizePixel = 0
+    f.BackgroundTransparency = 1; f.AnchorPoint = Vector2.new(0.5,0.5)
+    f.Size = UDim2.new(0,0,0,0); f.Parent = ScreenGui
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(1,0); corner.Parent = f
+    local sk = Instance.new("UIStroke")
+    sk.ApplyStrokeMode = Enum.ApplyStrokeMode.Border; sk.Thickness = 1; sk.Parent = f
     return {
         _tag = TAG.Circle, _frame = f, _stroke = sk,
         _props = {
-            Visible      = false,
-            ZIndex       = 1,
-            Color        = Color3.new(1, 1, 1),
-            Transparency = 0,
-            Position     = Vector2.new(0, 0),
-            Radius       = 0,
-            Thickness    = 1,
-            Filled       = false,
-            NumSides     = 0,
+            Visible=false, ZIndex=1, Color=Color3.new(1,1,1), Transparency=0,
+            Position=Vector2.new(0,0), Radius=0, Thickness=1, Filled=false, NumSides=0,
         },
     }
 end
 
 local function makeSegment()
-    local f              = Instance.new("Frame")
-    f.Name               = "Draw_Seg"
-    f.BorderSizePixel    = 0
-    f.BackgroundColor3   = Color3.new(1, 1, 1)
-    f.AnchorPoint        = Vector2.new(0, 0.5)
-    f.Size               = UDim2.new(0, 0, 0, 1)
-    f.Visible            = false
-    f.Parent             = ScreenGui
+    local f = Instance.new("Frame")
+    f.Name = "Draw_Seg"; f.BorderSizePixel = 0
+    f.BackgroundColor3 = Color3.new(1,1,1)
+    f.AnchorPoint = Vector2.new(0,0)
+    f.Size = UDim2.new(0,0,0,1); f.Visible = false; f.Parent = ScreenGui
     return {
         _frame = f,
         _props = {
-            Visible      = false,
-            ZIndex       = 1,
-            Color        = Color3.new(1, 1, 1),
-            Transparency = 0,
-            Thickness    = 1,
-            From         = Vector2.new(0, 0),
-            To           = Vector2.new(0, 0),
+            Visible=false, ZIndex=1, Color=Color3.new(1,1,1), Transparency=0,
+            Thickness=1, From=Vector2.new(0,0), To=Vector2.new(0,0),
         },
     }
 end
@@ -373,51 +298,33 @@ end
 local function newPoly(tag, pointNames, nSegs)
     local segs = {}
     for i = 1, nSegs do segs[i] = makeSegment() end
-    local props = {
-        Visible      = false,
-        ZIndex       = 1,
-        Color        = Color3.new(1, 1, 1),
-        Transparency = 0,
-        Thickness    = 1,
-    }
-    for _, name in ipairs(pointNames) do
-        props[name] = Vector2.new(0, 0)
-    end
-    return { _tag = tag, _segments = segs, _props = props }
+    local props = { Visible=false, ZIndex=1, Color=Color3.new(1,1,1), Transparency=0, Thickness=1 }
+    for _, name in ipairs(pointNames) do props[name] = Vector2.new(0,0) end
+    return { _tag=tag, _segments=segs, _props=props }
 end
 
 local function newQuad()
-    return newPoly(TAG.Quad, { "PointA","PointB","PointC","PointD" }, 4)
+    return newPoly(TAG.Quad, {"PointA","PointB","PointC","PointD"}, 4)
 end
 
 local function newTriangle()
-    return newPoly(TAG.Triangle, { "PointA","PointB","PointC" }, 3)
+    return newPoly(TAG.Triangle, {"PointA","PointB","PointC"}, 3)
 end
 
 local function newImage()
-    local i                  = Instance.new("ImageLabel")
-    i.Name                   = "Draw_Image"
-    i.BackgroundTransparency = 1
-    i.BorderSizePixel        = 0
-    i.Parent                 = ScreenGui
-
+    local i = Instance.new("ImageLabel")
+    i.Name = "Draw_Image"; i.BackgroundTransparency = 1
+    i.BorderSizePixel = 0; i.Parent = ScreenGui
     return {
         _tag = TAG.Image, _img = i,
         _props = {
-            Visible      = false,
-            ZIndex       = 1,
-            Color        = Color3.new(1, 1, 1),
-            Transparency = 0,
-            Position     = Vector2.new(0, 0),
-            Size         = Vector2.new(32, 32),
-            Data         = "",
-            Rounding     = 0,
+            Visible=false, ZIndex=1, Color=Color3.new(1,1,1), Transparency=0,
+            Position=Vector2.new(0,0), Size=Vector2.new(32,32), Data="", Rounding=0,
         },
     }
 end
 
--- ─── Dispatch tables ──────────────────────────────────────────────────
-
+-- ── Dispatch ──────────────────────────────────────────────────────────
 local APPLIERS = {
     [TAG.Square]   = applySquare,
     [TAG.Text]     = applyText,
@@ -429,63 +336,30 @@ local APPLIERS = {
 }
 
 local REMOVERS = {
-    [TAG.Square] = function(obj)
-        if obj._frame then obj._frame:Destroy() end
-        obj._frame = nil; obj._stroke = nil; obj._props = nil
-    end,
-    [TAG.Text] = function(obj)
-        if obj._label then obj._label:Destroy() end
-        obj._label = nil; obj._props = nil
-    end,
-    [TAG.Line] = function(obj)
-        if obj._frame then obj._frame:Destroy() end
-        obj._frame = nil; obj._props = nil
-    end,
-    [TAG.Circle] = function(obj)
-        if obj._frame then obj._frame:Destroy() end
-        obj._frame = nil; obj._stroke = nil; obj._props = nil
-    end,
-    [TAG.Quad] = function(obj)
-        for _, seg in ipairs(obj._segments or {}) do
-            if seg._frame then seg._frame:Destroy() end
-        end
-        obj._segments = {}; obj._props = nil
-    end,
-    [TAG.Triangle] = function(obj)
-        for _, seg in ipairs(obj._segments or {}) do
-            if seg._frame then seg._frame:Destroy() end
-        end
-        obj._segments = {}; obj._props = nil
-    end,
-    [TAG.Image] = function(obj)
-        if obj._img then obj._img:Destroy() end
-        obj._img = nil; obj._props = nil
-    end,
+    [TAG.Square]   = function(o) if o._frame then o._frame:Destroy() end; o._frame=nil; o._stroke=nil; o._props=nil end,
+    [TAG.Text]     = function(o) if o._label then o._label:Destroy() end; o._label=nil; o._props=nil end,
+    [TAG.Line]     = function(o) if o._frame then o._frame:Destroy() end; o._frame=nil; o._props=nil end,
+    [TAG.Circle]   = function(o) if o._frame then o._frame:Destroy() end; o._frame=nil; o._stroke=nil; o._props=nil end,
+    [TAG.Quad]     = function(o) for _,s in ipairs(o._segments or {}) do if s._frame then s._frame:Destroy() end end; o._segments={}; o._props=nil end,
+    [TAG.Triangle] = function(o) for _,s in ipairs(o._segments or {}) do if s._frame then s._frame:Destroy() end end; o._segments={}; o._props=nil end,
+    [TAG.Image]    = function(o) if o._img then o._img:Destroy() end; o._img=nil; o._props=nil end,
 }
 
 local CONSTRUCTORS = {
-    Square   = newSquare,
-    Text     = newText,
-    Line     = newLine,
-    Circle   = newCircle,
-    Quad     = newQuad,
-    Triangle = newTriangle,
-    Image    = newImage,
+    Square=newSquare, Text=newText, Line=newLine, Circle=newCircle,
+    Quad=newQuad, Triangle=newTriangle, Image=newImage,
 }
 
--- ─── Draw.new ─────────────────────────────────────────────────────────
-
+-- ── Draw.new ──────────────────────────────────────────────────────────
 function Draw.new(kind)
     local ctor = CONSTRUCTORS[kind]
     assert(ctor, "drawlib: unsupported type '" .. tostring(kind) .. "'")
-
     local obj     = ctor()
     local applier = APPLIERS[obj._tag]
     local remover = REMOVERS[obj._tag]
     local removed = false
 
     return setmetatable({}, {
-
         __index = function(_, k)
             if k == "Remove" or k == "Destroy" then
                 return function()
@@ -494,11 +368,7 @@ function Draw.new(kind)
                     if remover then remover(obj) end
                 end
             end
-
-            if k == "TextBounds" and obj._label then
-                return obj._label.TextBounds
-            end
-
+            if k == "TextBounds" and obj._label then return obj._label.TextBounds end
             local props = obj._props
             if props then
                 local v = props[k]
@@ -506,7 +376,6 @@ function Draw.new(kind)
             end
             return nil
         end,
-
         __newindex = function(_, k, v)
             if removed then return end
             local props = obj._props
@@ -518,12 +387,9 @@ function Draw.new(kind)
     })
 end
 
--- ─── Draw.Clear ───────────────────────────────────────────────────────
-
+-- ── Draw.Clear ────────────────────────────────────────────────────────
 function Draw.Clear()
-    for _, child in ipairs(ScreenGui:GetChildren()) do
-        child:Destroy()
-    end
+    for _, child in ipairs(ScreenGui:GetChildren()) do child:Destroy() end
 end
 
 return Draw
