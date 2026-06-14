@@ -3,6 +3,8 @@ local Draw = {}
 local CoreGui   = game:GetService("CoreGui")
 local Players   = game:GetService("Players")
 local Camera    = workspace.CurrentCamera
+local RunService = game:GetService("RunService")
+local TextService = game:GetService("TextService")
 
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name           = "DrawLibCanvas"
@@ -399,7 +401,7 @@ local function newText()
     l.Name = "Draw_Text"; l.BackgroundTransparency = 1; l.BorderSizePixel = 0
     l.Font = Enum.Font.Code; l.Text = ""; l.TextSize = 14
     l.TextColor3 = Color3.new(1,1,1); l.TextStrokeTransparency = 1
-    l.AnchorPoint = Vector2.new(0,0); l.AutomaticSize = Enum.AutomaticSize.XY
+    l.AnchorPoint = Vector2.new(0,0); l.AutomaticSize = Enum.AutomaticSize.None
     l.Size = UDim2.new(0,0,0,0); l.Visible = false
     l.Parent = ScreenGui
     return {
@@ -544,7 +546,22 @@ local CONSTRUCTORS = {
 }
 
 -- track all live objects so Clear() can wipe them properly
-local _liveObjects = setmetatable({}, { __mode = "k" })
+local ActiveObjects = {}
+local DirtyObjects = {}
+
+local function MarkDirty(obj)
+    DirtyObjects[obj] = true
+end
+
+RunService.RenderStepped:Connect(function()
+    for obj in pairs(DirtyObjects) do
+        local applier = APPLIERS[obj._tag]
+        if applier and obj._props then
+            applier(obj)
+        end
+        DirtyObjects[obj] = nil
+    end
+end)
 
 function Draw.new(kind)
     local ctor = CONSTRUCTORS[kind]
@@ -601,14 +618,15 @@ function Draw.new(kind)
                     end
                     if recognized then
                         props[k] = v
-                        if applier then applier(obj) end
+                        MarkDirty(obj)
                     end
                 end
             end
         end,
     })
 
-    _liveObjects[obj] = obj
+    ActiveObjects[obj] = true
+    MarkDirty(obj)
     return handle
 end
 
