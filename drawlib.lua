@@ -575,11 +575,11 @@ function Draw.new(kind)
         __index = function(_, k)
             if k == "Remove" or k == "Destroy" then
                 return function()
-    if removed then return end
-    removed = true
-    ActiveObjects[obj] = nil
-    if remover then remover(obj) end
-end
+                    if removed then return end
+                    removed = true
+                    ActiveObjects[obj] = nil
+                    if remover then remover(obj) end
+                end
             end
             if k == "TextBounds" and obj._label then return obj._label.TextBounds end
             local props = obj._props
