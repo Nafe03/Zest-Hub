@@ -92,23 +92,19 @@ applyLine = function(obj)
     local from = p.From
     local to = p.To
 
-    local delta = to - from
-    local length = delta.Magnitude
+    local dx = to.X - from.X
+    local dy = to.Y - from.Y
 
-    if length <= 0 then
-        obj._frame.Visible = false
-        return
-    end
-
-    local angle = math.deg(math.atan2(delta.Y, delta.X))
+    local length = math.sqrt(dx * dx + dy * dy)
 
     local frame = obj._frame
 
-    frame.Visible = p.Visible
+    frame.Visible = p.Visible and length > 0
     frame.ZIndex = p.ZIndex
     frame.BackgroundColor3 = p.Color
-    frame.BackgroundTransparency = math.clamp(p.Transparency, 0, 1)
+    frame.BackgroundTransparency = c01(p.Transparency)
 
+    frame.AnchorPoint = Vector2.new(0, 0.5)
 
     frame.Position = UDim2.fromOffset(
         from.X,
@@ -120,7 +116,7 @@ applyLine = function(obj)
         math.max(1, p.Thickness)
     )
 
-    frame.Rotation = angle
+    frame.Rotation = math.deg(math.atan2(dy, dx))
 end
 
 local function applyCircle(obj)
