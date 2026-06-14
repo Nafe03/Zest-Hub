@@ -139,14 +139,17 @@ applyLine = function(obj)
     local len   = delta.Magnitude
 
     local f = obj._frame
-    f.ZIndex                  = p.ZIndex
-    f.BackgroundColor3        = p.Color
-    f.BackgroundTransparency  = c01(p.Transparency)
-    f.AnchorPoint             = Vector2.new(0, 0.5)   -- pivot at FROM
-    f.Size                    = UDim2.new(0, len, 0, math.max(p.Thickness, 1))
-    f.Position                = UDim2.new(0, from.X, 0, from.Y)
-    f.Rotation                = math.deg(math.atan2(delta.Y, delta.X))
-    f.Visible                 = p.Visible and len > 0
+    f.ZIndex                 = p.ZIndex
+    f.BackgroundColor3       = p.Color
+    f.BackgroundTransparency = c01(p.Transparency)
+    -- FIX: AnchorPoint must be (0, 0.5) AND position must be set
+    -- AFTER anchor so Roblox pivots rotation around the From point
+    f.AnchorPoint            = Vector2.new(0, 0.5)
+    f.Size                   = UDim2.new(0, len, 0, math.max(p.Thickness, 1))
+    -- FIX: position is the From point directly — anchor handles the Y offset
+    f.Position               = UDim2.new(0, from.X, 0, from.Y)
+    f.Rotation               = math.deg(math.atan2(delta.Y, delta.X))
+    f.Visible                = p.Visible and len > 0
 end
 
 -- FIX: AnchorPoint (0.5, 0.5) so .Position is the CENTER of the
