@@ -84,29 +84,53 @@ local function applyText(obj)
     l.TextStrokeColor3       = p.OutlineColor
 end
 
--- THE FIX:
--- AnchorPoint stays (0,0) always — never touch it in applyLine.
--- Roblox rotates a frame around its TOP-LEFT corner (before anchor).
--- So we manually shift the frame UP by half the thickness so the
--- rotation pivot (top-left) lands exactly on the From point's centre.
--- This means lines draw correctly from From→To regardless of camera.
+-- ── LINE (proper math, no rotation pivot issues) ──────────────────────
+--
+-- Roblox rotates GUI frames around their CENTER, not their corner.
+-- No anchor trick fixes this because the pivot is always the center.
+--
+-- Solution: place the frame so its CENTER sits at the MIDPOINT of the
+-- line From→To. The frame's width = length of the line, height = thickness.
+-- Then rotate around that center — which IS the midpoint, so From stays
+-- pinned exactly where it should be.
+--
+-- AnchorPoint (0.5, 0.5) + Position = midpoint of From→To
+-- This makes Roblox rotate the frame around the line's midpoint,
+-- which keeps both From and To exactly where they need to be.
+--
+-- Why this works with GetScreenPosition:
+-- GetScreenPosition returns Vector2(ScreenPos.X, ScreenPos.Y) from
+-- WorldToViewportPoint — these are already in the same screen pixel
+-- space that UDim2 offset uses, so no extra conversion needed.
 applyLine = function(obj)
     local p     = obj._props
     local from  = p.From
     local to    = p.To
     local delta = to - from
     local len   = delta.Magnitude
-    local thick = math.max(p.Thickness, 1)
+
+    if len == 0 then
+        obj._frame.Visible = false
+        return
+    end
+
+    local thick   = math.max(p.Thickness, 1)
+    local angle   = math.deg(math.atan2(delta.Y, delta.X))
+    -- midpoint of the line in screen space
+    local midX    = (from.X + to.X) * 0.5
+    local midY    = (from.Y + to.Y) * 0.5
 
     local f = obj._frame
     f.ZIndex                 = p.ZIndex
     f.BackgroundColor3       = p.Color
     f.BackgroundTransparency = c01(p.Transparency)
-    f.AnchorPoint            = Vector2.new(0, 0)
+    -- anchor at center so Roblox rotates around the midpoint
+    f.AnchorPoint            = Vector2.new(0.5, 0.5)
     f.Size                   = UDim2.new(0, len, 0, thick)
-    f.Position               = UDim2.new(0, from.X, 0, from.Y - thick * 0.5)
-    f.Rotation               = math.deg(math.atan2(delta.Y, delta.X))
-    f.Visible                = p.Visible and len > 0
+    -- position IS the midpoint — anchor(0.5,0.5) centers the frame here
+    f.Position               = UDim2.new(0, midX, 0, midY)
+    f.Rotation               = angle
+    f.Visible                = p.Visible
 end
 
 local function applyCircle(obj)
@@ -216,7 +240,7 @@ local function newLine()
     local f = Instance.new("Frame")
     f.Name = "Draw_Line"; f.BorderSizePixel = 0
     f.BackgroundColor3 = Color3.new(1,1,1)
-    f.AnchorPoint = Vector2.new(0, 0)  -- always (0,0), applyLine handles Y offset
+    f.AnchorPoint = Vector2.new(0.5, 0.5)
     f.Size = UDim2.new(0,0,0,1); f.Visible = false; f.Parent = ScreenGui
     return {
         _tag = TAG.Line, _frame = f,
@@ -249,7 +273,7 @@ local function makeSegment()
     local f = Instance.new("Frame")
     f.Name = "Draw_Seg"; f.BorderSizePixel = 0
     f.BackgroundColor3 = Color3.new(1,1,1)
-    f.AnchorPoint = Vector2.new(0, 0)
+    f.AnchorPoint = Vector2.new(0.5, 0.5)
     f.Size = UDim2.new(0,0,0,1); f.Visible = false; f.Parent = ScreenGui
     return {
         _frame = f,
