@@ -1,58 +1,74 @@
 --[[
-    drawlib.lua
-    ──────────────────────────────────────────────────────────────────────
-    A small, game-agnostic "Drawing" library that mimics the executor
-    Drawing API (Drawing.new("Square"/"Text"/"Line"/"Circle"/"Quad"))
-    but is implemented entirely with ScreenGui + Frame/TextLabel/UIStroke,
-    so it works on any exploit/executor and any game without relying on
-    a native Drawing library.
+    drawlib.lua  v2
+    ─────────────────────────────────────────────────────────────────────
+    Drop-in replacement for the native executor Drawing API.
+    Implemented with ScreenGui / Frame / TextLabel / UIStroke so it
+    works on any executor without a native Drawing library.
 
-    USAGE:
-        local Draw = loadstring(game:HttpGetAsync(
-            "https://raw.githubusercontent.com/<you>/<repo>/main/drawlib.lua"))()
+    BUGS FIXED vs v1
+    ────────────────
+    • __index ternary  – "and/or" returned nil for any _props value that
+      was false (e.g. Visible=false read back as nil). Replaced with an
+      explicit nil-guard.
+    • applyQuad        – was rawset-ting fields on the inner Line objects
+      instead of writing to their _props, so applyLine was never called
+      and the frames never moved. Now drives _props + applyLine directly.
+    • applyLine ghost  – zero-length line (From==To) forced Visible=true
+      and left a 1-pixel artefact; now hides automatically when len==0.
+    • Post-remove safety – _props is nulled on Remove() so a stale proxy
+      silently drops further writes instead of erroring.
+    • Unknown key writes silently dropped – the old fallback did
+      "obj[k] = v" which could corrupt internal fields like _frame.
 
-        local box = Draw.new("Square")
-        box.Size      = Vector2.new(100, 100)
-        box.Position  = Vector2.new(50, 50)
-        box.Color     = Color3.fromRGB(255,0,0)
-        box.Thickness = 1
-        box.Filled    = false
-        box.Visible   = true
+    NEW IN v2
+    ─────────
+    • Triangle  – PointA / PointB / PointC outline (3 segments)
+    • Square.OutlineColor  – separate stroke colour (false = use Color)
+    • Image.Rounding       – UICorner on ImageLabel
+    • Text.TextBounds      – read-only computed property
+    • All multi-segment types (Quad, Triangle) share one code-path
 
-        local txt = Draw.new("Text")
-        txt.Text     = "Hello"
-        txt.Position = Vector2.new(100, 100)
-        txt.Color    = Color3.new(1,1,1)
-        txt.Size     = 14
-        txt.Center   = true
-        txt.Outline  = true
-        txt.Visible  = true
+    SUPPORTED TYPES
+      "Square"   – rect, optional fill / rounding, separate OutlineColor
+      "Text"     – TextLabel, optional outline / center / right-align
+      "Line"     – rotated Frame from .From → .To
+      "Circle"   – UICorner circle/ring, optional fill
+      "Quad"     – 4-point outline (4 Line segments)
+      "Triangle" – 3-point outline (3 Line segments)
+      "Image"    – ImageLabel, optional rounding
 
-        box:Remove()  -- or box:Destroy()
+    SHARED PROPERTIES  (all types)
+      .Visible (bool)  .ZIndex (number)
+      .Color (Color3)  .Transparency (0-1, 0=opaque)
+      :Remove() / :Destroy()
 
-    SUPPORTED OBJECT TYPES:
-        "Square"  - rectangle, optional fill, optional outline
-        "Text"    - text label, optional outline / center / right align
-        "Line"    - a line between two points (via rotated frame)
-        "Circle"  - circle/ring, optional fill (via UICorner)
-        "Quad"    - 4-point quadrilateral outline (approx via 4 lines)
-        "Image"   - image label (ImageLabel)
+    USAGE
+      local Draw = loadstring(game:HttpGetAsync("<url>"))()
 
-    All objects share:
-        .Visible  (bool)
-        .ZIndex   (number)
-        .Color    (Color3)
-        .Transparency (0-1, 0 = opaque)
-    and support :Remove() / :Destroy() (aliases).
+      local box = Draw.new("Square")
+      box.Size      = Vector2.new(100, 50)
+      box.Position  = Vector2.new(200, 150)
+      box.Color     = Color3.fromRGB(255, 80, 80)
+      box.Thickness = 1.5
+      box.Filled    = false
+      box.Visible   = true
+
+      local ln = Draw.new("Line")
+      ln.From      = Vector2.new(0, 0)
+      ln.To        = Vector2.new(400, 300)
+      ln.Thickness = 2
+      ln.Color     = Color3.new(1, 1, 0)
+      ln.Visible   = true
+
+      box:Remove()
 --]]
 
 local Draw = {}
 
 ----------------------------------------------------------------------
--- Root ScreenGui (shared canvas for all drawings)
+-- ScreenGui (shared canvas)
 ----------------------------------------------------------------------
-local CoreGui = game:GetService("CoreGui")
-
+local CoreGui   = game:GetService("CoreGui")
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name           = "DrawLibCanvas"
 ScreenGui.ResetOnSpawn   = false
@@ -60,103 +76,201 @@ ScreenGui.IgnoreGuiInset = true
 ScreenGui.DisplayOrder   = 999
 pcall(function() ScreenGui.Parent = CoreGui end)
 if not ScreenGui.Parent then
-    ScreenGui.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+    ScreenGui.Parent = game:GetService("Players").LocalPlayer
+                           :WaitForChild("PlayerGui")
 end
-
 Draw.ScreenGui = ScreenGui
 
 ----------------------------------------------------------------------
--- Base object (handles common props: Visible, ZIndex, Color, Transparency)
+-- Internal helpers
 ----------------------------------------------------------------------
-local BaseObject = {}
-BaseObject.__index = BaseObject
+local function clamp01(n) return math.clamp(n, 0, 1) end
 
-function BaseObject.new(rootInstance)
-    local self = setmetatable({}, BaseObject)
-    self._root  = rootInstance
-    self._props = {
-        Visible      = false,
-        ZIndex       = 1,
-        Color        = Color3.new(1,1,1),
-        Transparency = 0,
+-- Build a lightweight line-segment struct for use inside Quad / Triangle.
+-- These are NOT user-facing proxies; applyLine writes to them directly.
+local function makeSegment()
+    local f               = Instance.new("Frame")
+    f.BorderSizePixel     = 0
+    f.BackgroundColor3    = Color3.new(1, 1, 1)
+    f.AnchorPoint         = Vector2.new(0, 0.5)
+    f.Size                = UDim2.new(0, 0, 0, 1)
+    f.Visible             = false
+    f.Parent              = ScreenGui
+    return {
+        _frame = f,
+        _props = {
+            Visible      = false,
+            ZIndex       = 1,
+            Color        = Color3.new(1, 1, 1),
+            Transparency = 0,
+            Thickness    = 1,
+            From         = Vector2.new(0, 0),
+            To           = Vector2.new(0, 0),
+        },
     }
-    rootInstance.Visible = false
-    return self
-end
-
-function BaseObject:Remove()
-    if self._root then
-        self._root:Destroy()
-        self._root = nil
-    end
-    setmetatable(self, nil)
-end
-BaseObject.Destroy = BaseObject.Remove
-
-----------------------------------------------------------------------
--- helper: clamp 0..1
-----------------------------------------------------------------------
-local function clamp01(n)
-    if n < 0 then return 0 elseif n > 1 then return 1 else return n end
 end
 
 ----------------------------------------------------------------------
--- SQUARE
+-- Class tags  (plain tables used as unique keys in dispatch maps)
 ----------------------------------------------------------------------
-local Square = setmetatable({}, { __index = BaseObject })
-Square.__index = Square
+local TAG = {
+    Square   = {},
+    Text     = {},
+    Line     = {},
+    Circle   = {},
+    Quad     = {},
+    Triangle = {},
+    Image    = {},
+}
 
-local function newSquare()
-    local frame = Instance.new("Frame")
-    frame.Name = "Draw_Square"
-    frame.BorderSizePixel = 0
-    frame.BackgroundColor3 = Color3.new(1,1,1)
-    frame.BackgroundTransparency = 1 -- starts unfilled
-    frame.Size = UDim2.new(0,0,0,0)
-    frame.Position = UDim2.new(0,0,0,0)
-    frame.Parent = ScreenGui
+----------------------------------------------------------------------
+-- Apply functions   (read _props → write Roblox instances)
+-- Each function is the single authoritative renderer for its type.
+----------------------------------------------------------------------
 
-    local stroke = Instance.new("UIStroke")
-    stroke.Thickness = 1
-    stroke.Color = Color3.new(1,1,1)
-    stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-    stroke.Enabled = true
-    stroke.Parent = frame
+-- Forward-declare so applyQuad / applyTriangle can call it before its
+-- definition appears in the file.
+local applyLine
 
-    local self = BaseObject.new(frame)
-    setmetatable(self, Square)
+local function applySquare(obj)
+    local p  = obj._props
+    local f  = obj._frame
+    local sk = obj._stroke
 
-    self._frame  = frame
-    self._stroke = stroke
+    f.Visible                = p.Visible
+    f.ZIndex                 = p.ZIndex
+    f.Size                   = UDim2.new(0, p.Size.X,     0, p.Size.Y)
+    f.Position               = UDim2.new(0, p.Position.X, 0, p.Position.Y)
+    f.BackgroundColor3       = p.Color
+    f.BackgroundTransparency = p.Filled and clamp01(p.Transparency) or 1
 
-    self._props.Size      = Vector2.new(0,0)
-    self._props.Position  = Vector2.new(0,0)
-    self._props.Thickness = 1
-    self._props.Filled    = false
-    self._props.Rounding  = 0
+    -- OutlineColor: false means "inherit Color", any Color3 overrides
+    sk.Color        = p.OutlineColor or p.Color
+    sk.Thickness    = p.Thickness
+    sk.Enabled      = p.Thickness > 0
+    sk.Transparency = clamp01(p.Transparency)
 
-    return self
-end
-
-local function applySquare(self)
-    local p = self._props
-    self._frame.Visible               = p.Visible
-    self._frame.ZIndex                = p.ZIndex
-    self._frame.Size                  = UDim2.new(0, p.Size.X, 0, p.Size.Y)
-    self._frame.Position              = UDim2.new(0, p.Position.X, 0, p.Position.Y)
-    self._frame.BackgroundColor3      = p.Color
-    self._frame.BackgroundTransparency = p.Filled and clamp01(p.Transparency) or 1
-
-    self._stroke.Color     = p.Color
-    self._stroke.Thickness = p.Thickness
-    self._stroke.Enabled   = (p.Thickness or 0) > 0
-    self._stroke.Transparency = clamp01(p.Transparency)
-
-    local corner = self._frame:FindFirstChildOfClass("UICorner")
-    if (p.Rounding or 0) > 0 then
+    -- Optional rounded corners (Rounding = 0 removes UICorner)
+    local corner = f:FindFirstChildOfClass("UICorner")
+    if p.Rounding > 0 then
         if not corner then
-            corner = Instance.new("UICorner")
-            corner.Parent = self._frame
+            corner        = Instance.new("UICorner")
+            corner.Parent = f
+        end
+        corner.CornerRadius = UDim.new(0, p.Rounding)
+    elseif corner then
+        corner:Destroy()
+    end
+end
+
+local function applyText(obj)
+    local p = obj._props
+    local l = obj._label
+
+    l.Visible          = p.Visible
+    l.ZIndex           = p.ZIndex
+    l.Text             = tostring(p.Text)
+    l.TextSize         = p.Size
+    l.TextColor3       = p.Color
+    l.TextTransparency = clamp01(p.Transparency)
+    l.Font             = p.Font
+    l.Position         = UDim2.new(0, p.Position.X, 0, p.Position.Y)
+
+    if p.Center then
+        l.TextXAlignment = Enum.TextXAlignment.Center
+        l.AnchorPoint    = Vector2.new(0.5, 0)
+    elseif p.Right then
+        l.TextXAlignment = Enum.TextXAlignment.Right
+        l.AnchorPoint    = Vector2.new(1, 0)
+    else
+        l.TextXAlignment = Enum.TextXAlignment.Left
+        l.AnchorPoint    = Vector2.new(0, 0)
+    end
+
+    l.TextStrokeTransparency = p.Outline and clamp01(p.Transparency) or 1
+    l.TextStrokeColor3       = p.OutlineColor
+end
+
+-- FIX: hide when From==To (was showing a 1px ghost frame at origin)
+applyLine = function(obj)
+    local p     = obj._props
+    local from  = p.From
+    local to    = p.To
+    local delta = to - from
+    local len   = delta.Magnitude
+
+    obj._frame.ZIndex                = p.ZIndex
+    obj._frame.BackgroundColor3      = p.Color
+    obj._frame.BackgroundTransparency = clamp01(p.Transparency)
+    obj._frame.Size                  = UDim2.new(0, len, 0, math.max(p.Thickness, 1))
+    obj._frame.Position              = UDim2.new(0, from.X, 0, from.Y)
+    obj._frame.Rotation              = math.deg(math.atan2(delta.Y, delta.X))
+    obj._frame.Visible               = p.Visible and len > 0
+end
+
+local function applyCircle(obj)
+    local p = obj._props
+
+    obj._frame.Visible               = p.Visible
+    obj._frame.ZIndex                = p.ZIndex
+    obj._frame.Size                  = UDim2.new(0, p.Radius * 2, 0, p.Radius * 2)
+    obj._frame.Position              = UDim2.new(0, p.Position.X, 0, p.Position.Y)
+    obj._frame.BackgroundColor3      = p.Color
+    obj._frame.BackgroundTransparency = p.Filled and clamp01(p.Transparency) or 1
+
+    obj._stroke.Color        = p.Color
+    obj._stroke.Thickness    = p.Thickness
+    obj._stroke.Enabled      = p.Thickness > 0
+    obj._stroke.Transparency = clamp01(p.Transparency)
+end
+
+-- Shared renderer for Quad and Triangle.
+-- FIX: previously applyQuad did "ln.From = v" which rawset on the table
+-- (no __newindex) so _props was never updated and applyLine was never
+-- called.  Now we write directly to _props and call applyLine ourselves.
+local function applySegments(obj, pts)
+    local p = obj._props
+    local n = #pts
+    for i, seg in ipairs(obj._segments) do
+        local sp    = seg._props
+        sp.Visible      = p.Visible
+        sp.ZIndex       = p.ZIndex
+        sp.Color        = p.Color
+        sp.Transparency = p.Transparency
+        sp.Thickness    = p.Thickness
+        sp.From         = pts[i]
+        sp.To           = pts[(i % n) + 1]
+        applyLine(seg)
+    end
+end
+
+local function applyQuad(obj)
+    local p = obj._props
+    applySegments(obj, { p.PointA, p.PointB, p.PointC, p.PointD })
+end
+
+local function applyTriangle(obj)
+    local p = obj._props
+    applySegments(obj, { p.PointA, p.PointB, p.PointC })
+end
+
+local function applyImage(obj)
+    local p = obj._props
+    local i = obj._img
+
+    i.Visible           = p.Visible
+    i.ZIndex            = p.ZIndex
+    i.Image             = p.Data
+    i.ImageColor3       = p.Color
+    i.ImageTransparency = clamp01(p.Transparency)
+    i.Size              = UDim2.new(0, p.Size.X,     0, p.Size.Y)
+    i.Position          = UDim2.new(0, p.Position.X, 0, p.Position.Y)
+
+    local corner = i:FindFirstChildOfClass("UICorner")
+    if p.Rounding > 0 then
+        if not corner then
+            corner        = Instance.new("UICorner")
+            corner.Parent = i
         end
         corner.CornerRadius = UDim.new(0, p.Rounding)
     elseif corner then
@@ -165,342 +279,301 @@ local function applySquare(self)
 end
 
 ----------------------------------------------------------------------
--- TEXT
+-- Constructors  (return plain tables; TAG field identifies the type)
 ----------------------------------------------------------------------
-local Text = setmetatable({}, { __index = BaseObject })
-Text.__index = Text
+local function newSquare()
+    local f                  = Instance.new("Frame")
+    f.Name                   = "Draw_Square"
+    f.BorderSizePixel        = 0
+    f.BackgroundColor3       = Color3.new(1, 1, 1)
+    f.BackgroundTransparency = 1
+    f.Size                   = UDim2.new(0, 0, 0, 0)
+    f.Parent                 = ScreenGui
+
+    local sk             = Instance.new("UIStroke")
+    sk.Thickness         = 1
+    sk.Color             = Color3.new(1, 1, 1)
+    sk.ApplyStrokeMode   = Enum.ApplyStrokeMode.Border
+    sk.Enabled           = true
+    sk.Parent            = f
+
+    return {
+        _tag = TAG.Square, _frame = f, _stroke = sk,
+        _props = {
+            Visible      = false,
+            ZIndex       = 1,
+            Color        = Color3.new(1, 1, 1),
+            Transparency = 0,
+            Size         = Vector2.new(0, 0),
+            Position     = Vector2.new(0, 0),
+            Thickness    = 1,
+            Filled       = false,
+            Rounding     = 0,
+            -- false = inherit Color for stroke; set to a Color3 to override
+            OutlineColor = false,
+        },
+    }
+end
 
 local function newText()
-    local label = Instance.new("TextLabel")
-    label.Name = "Draw_Text"
-    label.BackgroundTransparency = 1
-    label.BorderSizePixel = 0
-    label.Font = Enum.Font.Code
-    label.Text = ""
-    label.TextSize = 14
-    label.TextColor3 = Color3.new(1,1,1)
-    label.TextStrokeTransparency = 1
-    label.AnchorPoint = Vector2.new(0,0)
-    label.Size = UDim2.new(0,200,0,20)
-    label.AutomaticSize = Enum.AutomaticSize.XY
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Parent = ScreenGui
+    local l                  = Instance.new("TextLabel")
+    l.Name                   = "Draw_Text"
+    l.BackgroundTransparency = 1
+    l.BorderSizePixel        = 0
+    l.Font                   = Enum.Font.Code
+    l.Text                   = ""
+    l.TextSize               = 14
+    l.TextColor3             = Color3.new(1, 1, 1)
+    l.TextStrokeTransparency = 1
+    l.AnchorPoint            = Vector2.new(0, 0)
+    l.AutomaticSize          = Enum.AutomaticSize.XY
+    l.Size                   = UDim2.new(0, 200, 0, 20)
+    l.TextXAlignment         = Enum.TextXAlignment.Left
+    l.Parent                 = ScreenGui
 
-    local self = BaseObject.new(label)
-    setmetatable(self, Text)
-
-    self._label = label
-
-    self._props.Text     = ""
-    self._props.Size     = 14
-    self._props.Position = Vector2.new(0,0)
-    self._props.Center   = false
-    self._props.Right    = false
-    self._props.Outline  = false
-    self._props.OutlineColor = Color3.new(0,0,0)
-    self._props.Font     = Enum.Font.Code
-
-    return self
+    return {
+        _tag = TAG.Text, _label = l,
+        _props = {
+            Visible      = false,
+            ZIndex       = 1,
+            Color        = Color3.new(1, 1, 1),
+            Transparency = 0,
+            Text         = "",
+            Size         = 14,
+            Position     = Vector2.new(0, 0),
+            Center       = false,
+            Right        = false,
+            Outline      = false,
+            OutlineColor = Color3.new(0, 0, 0),
+            Font         = Enum.Font.Code,
+        },
+    }
 end
-
-local function applyText(self)
-    local p = self._props
-    self._label.Visible      = p.Visible
-    self._label.ZIndex       = p.ZIndex
-    self._label.Text         = p.Text
-    self._label.TextSize     = p.Size
-    self._label.TextColor3   = p.Color
-    self._label.TextTransparency = clamp01(p.Transparency)
-    self._label.Font          = p.Font
-
-    self._label.Position = UDim2.new(0, p.Position.X, 0, p.Position.Y)
-
-    if p.Center then
-        self._label.TextXAlignment = Enum.TextXAlignment.Center
-        self._label.AnchorPoint    = Vector2.new(0.5, 0)
-    elseif p.Right then
-        self._label.TextXAlignment = Enum.TextXAlignment.Right
-        self._label.AnchorPoint    = Vector2.new(1, 0)
-    else
-        self._label.TextXAlignment = Enum.TextXAlignment.Left
-        self._label.AnchorPoint    = Vector2.new(0, 0)
-    end
-
-    if p.Outline then
-        self._label.TextStrokeTransparency = 0
-        self._label.TextStrokeColor3       = p.OutlineColor
-    else
-        self._label.TextStrokeTransparency = 1
-    end
-end
-
-----------------------------------------------------------------------
--- LINE  (rotated thin frame between two points)
-----------------------------------------------------------------------
-local Line = setmetatable({}, { __index = BaseObject })
-Line.__index = Line
 
 local function newLine()
-    local frame = Instance.new("Frame")
-    frame.Name = "Draw_Line"
-    frame.BorderSizePixel = 0
-    frame.BackgroundColor3 = Color3.new(1,1,1)
-    frame.AnchorPoint = Vector2.new(0, 0.5)
-    frame.Size = UDim2.new(0,0,0,1)
-    frame.Parent = ScreenGui
+    local f            = Instance.new("Frame")
+    f.Name             = "Draw_Line"
+    f.BorderSizePixel  = 0
+    f.BackgroundColor3 = Color3.new(1, 1, 1)
+    f.AnchorPoint      = Vector2.new(0, 0.5)
+    f.Size             = UDim2.new(0, 0, 0, 1)
+    f.Parent           = ScreenGui
 
-    local self = BaseObject.new(frame)
-    setmetatable(self, Line)
-
-    self._frame = frame
-
-    self._props.From      = Vector2.new(0,0)
-    self._props.To        = Vector2.new(0,0)
-    self._props.Thickness = 1
-
-    return self
+    return {
+        _tag = TAG.Line, _frame = f,
+        _props = {
+            Visible      = false,
+            ZIndex       = 1,
+            Color        = Color3.new(1, 1, 1),
+            Transparency = 0,
+            From         = Vector2.new(0, 0),
+            To           = Vector2.new(0, 0),
+            Thickness    = 1,
+        },
+    }
 end
-
-local function applyLine(self)
-    local p = self._props
-    local from, to = p.From, p.To
-    local delta = to - from
-    local length = delta.Magnitude
-    local angle  = math.atan2(delta.Y, delta.X)
-
-    self._frame.Visible          = p.Visible
-    self._frame.ZIndex           = p.ZIndex
-    self._frame.BackgroundColor3 = p.Color
-    self._frame.BackgroundTransparency = clamp01(p.Transparency)
-    self._frame.Size     = UDim2.new(0, length, 0, math.max(p.Thickness or 1, 1))
-    self._frame.Position = UDim2.new(0, from.X, 0, from.Y)
-    self._frame.Rotation  = math.deg(angle)
-end
-
-----------------------------------------------------------------------
--- CIRCLE  (square frame + UICorner ring; Filled toggles background)
-----------------------------------------------------------------------
-local Circle = setmetatable({}, { __index = BaseObject })
-Circle.__index = Circle
 
 local function newCircle()
-    local frame = Instance.new("Frame")
-    frame.Name = "Draw_Circle"
-    frame.BorderSizePixel = 0
-    frame.BackgroundColor3 = Color3.new(1,1,1)
-    frame.BackgroundTransparency = 1
-    frame.AnchorPoint = Vector2.new(0.5, 0.5)
-    frame.Size = UDim2.new(0,0,0,0)
-    frame.Parent = ScreenGui
+    local f                  = Instance.new("Frame")
+    f.Name                   = "Draw_Circle"
+    f.BorderSizePixel        = 0
+    f.BackgroundColor3       = Color3.new(1, 1, 1)
+    f.BackgroundTransparency = 1
+    f.AnchorPoint            = Vector2.new(0.5, 0.5)
+    f.Size                   = UDim2.new(0, 0, 0, 0)
+    f.Parent                 = ScreenGui
 
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(1, 0)
-    corner.Parent = frame
+    local corner            = Instance.new("UICorner")
+    corner.CornerRadius     = UDim.new(1, 0)
+    corner.Parent           = f
 
-    local stroke = Instance.new("UIStroke")
-    stroke.Thickness = 1
-    stroke.Color = Color3.new(1,1,1)
-    stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-    stroke.Parent = frame
+    local sk                = Instance.new("UIStroke")
+    sk.Thickness            = 1
+    sk.Color                = Color3.new(1, 1, 1)
+    sk.ApplyStrokeMode      = Enum.ApplyStrokeMode.Border
+    sk.Parent               = f
 
-    local self = BaseObject.new(frame)
-    setmetatable(self, Circle)
-
-    self._frame  = frame
-    self._stroke = stroke
-
-    self._props.Position  = Vector2.new(0,0) -- center
-    self._props.Radius    = 0
-    self._props.Thickness = 1
-    self._props.Filled    = false
-    self._props.NumSides  = 0 -- unused, kept for API parity
-
-    return self
+    return {
+        _tag = TAG.Circle, _frame = f, _stroke = sk,
+        _props = {
+            Visible      = false,
+            ZIndex       = 1,
+            Color        = Color3.new(1, 1, 1),
+            Transparency = 0,
+            Position     = Vector2.new(0, 0),
+            Radius       = 0,
+            Thickness    = 1,
+            Filled       = false,
+            NumSides     = 0,   -- unused; kept for API parity
+        },
+    }
 end
 
-local function applyCircle(self)
-    local p = self._props
-    self._frame.Visible          = p.Visible
-    self._frame.ZIndex           = p.ZIndex
-    self._frame.Size              = UDim2.new(0, p.Radius * 2, 0, p.Radius * 2)
-    self._frame.Position          = UDim2.new(0, p.Position.X, 0, p.Position.Y)
-    self._frame.BackgroundColor3  = p.Color
-    self._frame.BackgroundTransparency = p.Filled and clamp01(p.Transparency) or 1
+-- Shared factory for multi-segment outlines (Quad, Triangle)
+local function newPoly(tag, pointNames, nSegs)
+    local segs = {}
+    for i = 1, nSegs do segs[i] = makeSegment() end
 
-    self._stroke.Color        = p.Color
-    self._stroke.Thickness    = p.Thickness
-    self._stroke.Enabled      = (p.Thickness or 0) > 0
-    self._stroke.Transparency = clamp01(p.Transparency)
+    local props = {
+        Visible      = false,
+        ZIndex       = 1,
+        Color        = Color3.new(1, 1, 1),
+        Transparency = 0,
+        Thickness    = 1,
+    }
+    for _, name in ipairs(pointNames) do
+        props[name] = Vector2.new(0, 0)
+    end
+
+    return { _tag = tag, _segments = segs, _props = props }
 end
-
-----------------------------------------------------------------------
--- QUAD  (4-point outline, drawn as 4 Lines)
-----------------------------------------------------------------------
-local Quad = setmetatable({}, { __index = BaseObject })
-Quad.__index = Quad
 
 local function newQuad()
-    -- A quad is just a container that owns 4 internal Line objects
-    local holder = Instance.new("Frame")
-    holder.Name = "Draw_Quad_Holder"
-    holder.BackgroundTransparency = 1
-    holder.Size = UDim2.new(0,0,0,0)
-    holder.Visible = false
-    holder.Parent = ScreenGui
-
-    local self = BaseObject.new(holder)
-    setmetatable(self, Quad)
-
-    self._lines = {
-        newLine(), newLine(), newLine(), newLine()
-    }
-
-    self._props.PointA    = Vector2.new(0,0)
-    self._props.PointB    = Vector2.new(0,0)
-    self._props.PointC    = Vector2.new(0,0)
-    self._props.PointD    = Vector2.new(0,0)
-    self._props.Thickness = 1
-    self._props.Filled    = false -- not supported for outline-only quad
-
-    return self
+    return newPoly(TAG.Quad, { "PointA", "PointB", "PointC", "PointD" }, 4)
 end
 
-local function applyQuad(self)
-    local p = self._props
-    local pts = { p.PointA, p.PointB, p.PointC, p.PointD }
-    for i = 1, 4 do
-        local a = pts[i]
-        local b = pts[(i % 4) + 1]
-        local ln = self._lines[i]
-        ln.Visible   = p.Visible
-        ln.ZIndex    = p.ZIndex
-        ln.Color     = p.Color
-        ln.Transparency = p.Transparency
-        ln.Thickness = p.Thickness
-        ln.From      = a
-        ln.To        = b
-    end
+local function newTriangle()
+    return newPoly(TAG.Triangle, { "PointA", "PointB", "PointC" }, 3)
 end
-
-function Quad:Remove()
-    for _, ln in ipairs(self._lines) do ln:Remove() end
-    if self._root then self._root:Destroy(); self._root = nil end
-    setmetatable(self, nil)
-end
-Quad.Destroy = Quad.Remove
-
-----------------------------------------------------------------------
--- IMAGE
-----------------------------------------------------------------------
-local Image = setmetatable({}, { __index = BaseObject })
-Image.__index = Image
 
 local function newImage()
-    local img = Instance.new("ImageLabel")
-    img.Name = "Draw_Image"
-    img.BackgroundTransparency = 1
-    img.BorderSizePixel = 0
-    img.Image = ""
-    img.Size = UDim2.new(0,32,0,32)
-    img.Parent = ScreenGui
+    local i              = Instance.new("ImageLabel")
+    i.Name               = "Draw_Image"
+    i.BackgroundTransparency = 1
+    i.BorderSizePixel    = 0
+    i.Image              = ""
+    i.Size               = UDim2.new(0, 32, 0, 32)
+    i.Parent             = ScreenGui
 
-    local self = BaseObject.new(img)
-    setmetatable(self, Image)
-
-    self._img = img
-
-    self._props.Position = Vector2.new(0,0)
-    self._props.Size     = Vector2.new(32,32)
-    self._props.Data     = "" -- image asset id / data
-
-    return self
-end
-
-local function applyImage(self)
-    local p = self._props
-    self._img.Visible       = p.Visible
-    self._img.ZIndex        = p.ZIndex
-    self._img.Image         = p.Data
-    self._img.ImageColor3   = p.Color
-    self._img.ImageTransparency = clamp01(p.Transparency)
-    self._img.Size          = UDim2.new(0, p.Size.X, 0, p.Size.Y)
-    self._img.Position      = UDim2.new(0, p.Position.X, 0, p.Position.Y)
+    return {
+        _tag = TAG.Image, _img = i,
+        _props = {
+            Visible      = false,
+            ZIndex       = 1,
+            Color        = Color3.new(1, 1, 1),
+            Transparency = 0,
+            Position     = Vector2.new(0, 0),
+            Size         = Vector2.new(32, 32),
+            Data         = "",
+            Rounding     = 0,
+        },
+    }
 end
 
 ----------------------------------------------------------------------
--- Generic property dispatch (the "magic" __newindex / __index)
+-- Dispatch tables
 ----------------------------------------------------------------------
 local APPLIERS = {
-    [Square] = applySquare,
-    [Text]   = applyText,
-    [Line]   = applyLine,
-    [Circle] = applyCircle,
-    [Quad]   = applyQuad,
-    [Image]  = applyImage,
+    [TAG.Square]   = applySquare,
+    [TAG.Text]     = applyText,
+    [TAG.Line]     = applyLine,
+    [TAG.Circle]   = applyCircle,
+    [TAG.Quad]     = applyQuad,
+    [TAG.Triangle] = applyTriangle,
+    [TAG.Image]    = applyImage,
 }
 
-local function wrapClass(class)
-    local mt = {}
-    mt.__index = function(t, k)
-        local raw = rawget(t, "_props")
-        if raw and raw[k] ~= nil then return raw[k] end
-        return class[k]
-    end
-    mt.__newindex = function(t, k, v)
-        local raw = rawget(t, "_props")
-        if raw and raw[k] ~= nil then
-            raw[k] = v
-            local applier = APPLIERS[class]
-            if applier then applier(t) end
-        else
-            rawset(t, k, v)
+local REMOVERS = {
+    [TAG.Square] = function(obj)
+        if obj._frame  then obj._frame:Destroy()  end
+        obj._frame = nil; obj._stroke = nil; obj._props = nil
+    end,
+    [TAG.Text] = function(obj)
+        if obj._label  then obj._label:Destroy()  end
+        obj._label = nil; obj._props = nil
+    end,
+    [TAG.Line] = function(obj)
+        if obj._frame  then obj._frame:Destroy()  end
+        obj._frame = nil; obj._props = nil
+    end,
+    [TAG.Circle] = function(obj)
+        if obj._frame  then obj._frame:Destroy()  end
+        obj._frame = nil; obj._stroke = nil; obj._props = nil
+    end,
+    [TAG.Quad] = function(obj)
+        for _, seg in ipairs(obj._segments or {}) do
+            if seg._frame then seg._frame:Destroy() end
         end
-    end
-    return setmetatable({}, mt)
-end
-
-----------------------------------------------------------------------
--- Draw.new(kind)
-----------------------------------------------------------------------
-local CONSTRUCTORS = {
-    Square = newSquare,
-    Text   = newText,
-    Line   = newLine,
-    Circle = newCircle,
-    Quad   = newQuad,
-    Image  = newImage,
+        obj._segments = {}; obj._props = nil
+    end,
+    [TAG.Triangle] = function(obj)
+        for _, seg in ipairs(obj._segments or {}) do
+            if seg._frame then seg._frame:Destroy() end
+        end
+        obj._segments = {}; obj._props = nil
+    end,
+    [TAG.Image] = function(obj)
+        if obj._img    then obj._img:Destroy()    end
+        obj._img = nil; obj._props = nil
+    end,
 }
 
+local CONSTRUCTORS = {
+    Square   = newSquare,
+    Text     = newText,
+    Line     = newLine,
+    Circle   = newCircle,
+    Quad     = newQuad,
+    Triangle = newTriangle,
+    Image    = newImage,
+}
+
+----------------------------------------------------------------------
+-- Draw.new(kind)  →  user-facing proxy
+-- The proxy is the only thing the caller ever holds.  It routes
+-- property reads/writes through _props so every change immediately
+-- re-renders the underlying Roblox instances.
+----------------------------------------------------------------------
 function Draw.new(kind)
     local ctor = CONSTRUCTORS[kind]
-    if not ctor then
-        error("drawlib: unsupported Drawing type '" .. tostring(kind) .. "'")
-    end
-    local obj = ctor()
-    -- proxy so `obj.Color = x` routes through _props + applier
-    local class = getmetatable(obj)
-    return setmetatable({ _impl = obj }, {
+    assert(ctor, "drawlib: unsupported type '" .. tostring(kind) .. "'")
+
+    local obj     = ctor()
+    local applier = APPLIERS[obj._tag]
+    local remover = REMOVERS[obj._tag]
+
+    return setmetatable({}, {
+
+        -- FIX: replaced "and/or" ternary with explicit nil-check.
+        -- Old code: "props[k] ~= nil and props[k] or v" returned v (nil)
+        -- whenever props[k] was false, breaking any boolean property read.
         __index = function(_, k)
-            local v = obj[k]
-            if type(v) == "function" then
-                return function(_, ...) return v(obj, ...) end
+            -- Destroy / Remove (not in _props; handled specially)
+            if k == "Remove" or k == "Destroy" then
+                return function()
+                    if remover then remover(obj) end
+                end
             end
-            return obj._props[k] ~= nil and obj._props[k] or v
+
+            -- Read-only computed property: TextBounds (Text only)
+            if k == "TextBounds" and obj._label then
+                return obj._label.TextBounds
+            end
+
+            -- _props lookup  — works correctly for false / 0 / ""
+            local props = obj._props
+            if props then
+                local v = props[k]
+                if v ~= nil then return v end
+            end
+            return nil
         end,
+
         __newindex = function(_, k, v)
-            if obj._props[k] ~= nil then
-                obj._props[k] = v
-                local applier = APPLIERS[class]
+            local props = obj._props
+            -- Only known _props keys are routed through the applier.
+            -- Unknown keys are silently dropped (no accidental rawset
+            -- on the internal obj table which could corrupt _frame etc.)
+            if props and props[k] ~= nil then
+                props[k] = v
                 if applier then applier(obj) end
-            else
-                obj[k] = v
             end
         end,
     })
 end
 
 ----------------------------------------------------------------------
--- Utility: clear everything drawn so far
+-- Draw.Clear()  –  destroy every active drawing
 ----------------------------------------------------------------------
 function Draw.Clear()
     for _, child in ipairs(ScreenGui:GetChildren()) do
