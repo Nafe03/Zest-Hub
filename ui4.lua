@@ -1768,25 +1768,11 @@ function UILibrary.new(options)
     end
 
     function Window:Destroy()
-        task.spawn(function()
-            smoothTween(MainBackGround, {Size = UDim2.new(0, 0, 0, 0)}, 0.3)
-            task.wait(0.3)
-            ScreenGui:Destroy()
-        end)
+        ScreenGui:Destroy()
     end
 
     function Window:ToggleVisibility()
-        if ScreenGui.Enabled then
-            task.spawn(function()
-                smoothTween(MainBackGround, {Size = UDim2.new(0, 0, 0, 0)}, 0.2)
-                task.wait(0.2)
-                ScreenGui.Enabled = false
-            end)
-        else
-            ScreenGui.Enabled = true
-            MainBackGround.Size = UDim2.new(0, 0, 0, 0)
-            smoothTween(MainBackGround, {Size = options.Size}, 0.3)
-        end
+        ScreenGui.Enabled = not ScreenGui.Enabled
     end
 
     function Window:SetPosition(position)
