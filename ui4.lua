@@ -495,7 +495,8 @@ function UILibrary.new(options)
     MainBackGround.BorderSizePixel = 0
     MainBackGround.Position = options.Position
     MainBackGround.Size = options.Size
-    MainBackGround.ClipsDescendants = true
+    -- Keep false so dropdowns (ScrollingFrames) can overflow the window boundary
+    MainBackGround.ClipsDescendants = false
     
     UICorner.CornerRadius = UDim.new(0, 8)
     UICorner.Parent = MainBackGround
@@ -632,6 +633,8 @@ function UILibrary.new(options)
         TabContent.ScrollBarImageColor3 = options.DefaultColor
         TabContent.Visible = false
         TabContent.ScrollingDirection = Enum.ScrollingDirection.Y
+        -- Allow dropdown lists to visually overflow the scroll area
+        TabContent.ClipsDescendants = false
 
         -- Left Container Setup
         LeftContainer.Name = "LeftContainer"
@@ -1044,13 +1047,19 @@ function UILibrary.new(options)
                         options.DefaultColor = options.DefaultColor or Window.DefaultColor
                         options.TextColor = options.TextColor or Window.TextColor
                         options.Values = options.Values or {}
-                        
+
+                        -- Max visible rows before scroll kicks in
+                        local MAX_VISIBLE_ROWS = 6
+                        local ROW_HEIGHT = 22
+                        local LIST_PADDING = 8 -- top + bottom padding combined
+
                         local DropdownFrame = Instance.new("Frame")
                         local DropdownText = Instance.new("TextLabel")
                         local DropdownButton = Instance.new("TextButton")
                         local DropdownButtonCorner = Instance.new("UICorner")
                         local DropdownArrow = Instance.new("TextLabel")
-                        local DropdownList = Instance.new("Frame")
+                        -- Use a ScrollingFrame so long lists can be scrolled
+                        local DropdownList = Instance.new("ScrollingFrame")
                         local DropdownListLayout = Instance.new("UIListLayout")
                         local DropdownListCorner = Instance.new("UICorner")
 
@@ -1060,6 +1069,7 @@ function UILibrary.new(options)
                         DropdownFrame.Size = UDim2.new(1, 0, 0, 44)
                         DropdownFrame.LayoutOrder = #self.Elements + 1
                         DropdownFrame.ZIndex = 2
+                        DropdownFrame.ClipsDescendants = false
 
                         DropdownText.Name = "Text"
                         DropdownText.Parent = DropdownFrame
@@ -1089,7 +1099,7 @@ function UILibrary.new(options)
 
                         DropdownButtonCorner.CornerRadius = UDim.new(0, 4)
                         DropdownButtonCorner.Parent = DropdownButton
-                        
+
                         local DropdownStroke = Instance.new("UIStroke")
                         DropdownStroke.Color = Color3.fromRGB(55, 55, 55)
                         DropdownStroke.Thickness = 1
@@ -1105,6 +1115,7 @@ function UILibrary.new(options)
                         DropdownArrow.TextColor3 = options.DefaultColor
                         DropdownArrow.TextSize = 10
 
+                        -- ScrollingFrame list: floats over siblings via high ZIndex
                         DropdownList.Name = "List"
                         DropdownList.Parent = DropdownFrame
                         DropdownList.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
@@ -1112,12 +1123,19 @@ function UILibrary.new(options)
                         DropdownList.Position = UDim2.new(0, 0, 0, 45)
                         DropdownList.Size = UDim2.new(1, 0, 0, 0)
                         DropdownList.Visible = false
-                        DropdownList.ZIndex = 10
+                        DropdownList.ZIndex = 50
                         DropdownList.ClipsDescendants = true
+                        -- ScrollingFrame-specific properties
+                        DropdownList.ScrollBarThickness = 4
+                        DropdownList.ScrollBarImageColor3 = Color3.fromRGB(80, 80, 80)
+                        DropdownList.CanvasSize = UDim2.new(0, 0, 0, 0) -- updated after items are added
+                        DropdownList.AutomaticCanvasSize = Enum.AutomaticSize.Y
+                        DropdownList.ScrollingDirection = Enum.ScrollingDirection.Y
+                        DropdownList.ElasticBehavior = Enum.ElasticBehavior.Never
 
                         DropdownListCorner.CornerRadius = UDim.new(0, 4)
                         DropdownListCorner.Parent = DropdownList
-                        
+
                         local DropdownListStroke = Instance.new("UIStroke")
                         DropdownListStroke.Color = Color3.fromRGB(55, 55, 55)
                         DropdownListStroke.Thickness = 1
@@ -1126,7 +1144,7 @@ function UILibrary.new(options)
                         DropdownListLayout.Parent = DropdownList
                         DropdownListLayout.SortOrder = Enum.SortOrder.LayoutOrder
                         DropdownListLayout.Padding = UDim.new(0, 2)
-                        
+
                         local DropdownPadding = Instance.new("UIPadding")
                         DropdownPadding.Parent = DropdownList
                         DropdownPadding.PaddingTop = UDim.new(0, 4)
@@ -1136,6 +1154,34 @@ function UILibrary.new(options)
 
                         local isOpen = false
                         local selectedValue = options.Default or options.Values[1] or ""
+
+                        -- Calculate open height: capped at MAX_VISIBLE_ROWS rows
+                        local function getOpenHeight()
+                            local fullHeight = (#options.Values * ROW_HEIGHT) + LIST_PADDING
+                            local maxHeight = (MAX_VISIBLE_ROWS * ROW_HEIGHT) + LIST_PADDING
+                            return math.min(fullHeight, maxHeight)
+                        end
+
+                        -- Expand/collapse the DropdownFrame itself so the groupbox grows
+                        local function setOpen(open)
+                            isOpen = open
+                            if open then
+                                local listH = getOpenHeight()
+                                DropdownList.Visible = true
+                                smoothTween(DropdownList, {Size = UDim2.new(1, 0, 0, listH)}, 0.15)
+                                smoothTween(DropdownArrow, {Rotation = 180}, 0.15)
+                                -- Grow the frame so siblings are pushed down
+                                smoothTween(DropdownFrame, {Size = UDim2.new(1, 0, 0, 44 + listH + 2)}, 0.15)
+                            else
+                                smoothTween(DropdownList, {Size = UDim2.new(1, 0, 0, 0)}, 0.15)
+                                smoothTween(DropdownArrow, {Rotation = 0}, 0.15)
+                                smoothTween(DropdownFrame, {Size = UDim2.new(1, 0, 0, 44)}, 0.15)
+                                task.wait(0.15)
+                                DropdownList.Visible = false
+                            end
+                            -- Refresh groupbox height
+                            self:UpdateSize()
+                        end
 
                         for i, option in ipairs(options.Values) do
                             local OptionButton = Instance.new("TextButton")
@@ -1151,7 +1197,7 @@ function UILibrary.new(options)
                             OptionButton.TextColor3 = options.TextColor
                             OptionButton.TextSize = 11
                             OptionButton.TextXAlignment = Enum.TextXAlignment.Left
-                            OptionButton.ZIndex = 11
+                            OptionButton.ZIndex = 51
                             OptionButton.AutoButtonColor = false
 
                             OptionButtonCorner.CornerRadius = UDim.new(0, 3)
@@ -1168,13 +1214,7 @@ function UILibrary.new(options)
                             OptionButton.MouseButton1Click:Connect(function()
                                 selectedValue = option
                                 DropdownButton.Text = "  " .. option
-                                
-                                smoothTween(DropdownList, {Size = UDim2.new(1, 0, 0, 0)}, 0.15)
-                                task.wait(0.15)
-                                DropdownList.Visible = false
-                                isOpen = false
-                                smoothTween(DropdownArrow, {Rotation = 0}, 0.15)
-                                
+                                setOpen(false)
                                 if options.Callback then
                                     options.Callback(option)
                                 end
@@ -1182,25 +1222,14 @@ function UILibrary.new(options)
                         end
 
                         DropdownButton.MouseButton1Click:Connect(function()
-                            isOpen = not isOpen
-                            if isOpen then
-                                DropdownList.Visible = true
-                                local targetHeight = (#options.Values * 22) + 8
-                                smoothTween(DropdownList, {Size = UDim2.new(1, 0, 0, targetHeight)}, 0.15)
-                                smoothTween(DropdownArrow, {Rotation = 180}, 0.15)
-                            else
-                                smoothTween(DropdownList, {Size = UDim2.new(1, 0, 0, 0)}, 0.15)
-                                smoothTween(DropdownArrow, {Rotation = 0}, 0.15)
-                                task.wait(0.15)
-                                DropdownList.Visible = false
-                            end
+                            setOpen(not isOpen)
                         end)
-                        
+
                         -- Hover effect
                         DropdownButton.MouseEnter:Connect(function()
                             smoothTween(DropdownButton, {BackgroundColor3 = Color3.fromRGB(35, 35, 35)})
                         end)
-                        
+
                         DropdownButton.MouseLeave:Connect(function()
                             smoothTween(DropdownButton, {BackgroundColor3 = Color3.fromRGB(30, 30, 30)})
                         end)
@@ -1219,7 +1248,10 @@ function UILibrary.new(options)
                             end,
                             GetValue = function()
                                 return selectedValue
-                            end
+                            end,
+                            Close = function()
+                                if isOpen then setOpen(false) end
+                            end,
                         }
 
                         table.insert(self.Elements, element)
