@@ -641,7 +641,8 @@ function UILibrary.new(options)
         LeftContainer.Parent = TabContent
         LeftContainer.BackgroundTransparency = 1
         LeftContainer.Position = UDim2.new(0, 10, 0, 10)
-        LeftContainer.Size = UDim2.new(0.5, -15, 1, -20)
+        LeftContainer.Size = UDim2.new(0.5, -15, 0, 0) -- height driven by content
+        LeftContainer.AutomaticSize = Enum.AutomaticSize.Y
         
         LeftLayout.Parent = LeftContainer
         LeftLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -655,7 +656,8 @@ function UILibrary.new(options)
         RightContainer.Parent = TabContent
         RightContainer.BackgroundTransparency = 1
         RightContainer.Position = UDim2.new(0.5, 5, 0, 10)
-        RightContainer.Size = UDim2.new(0.5, -15, 1, -20)
+        RightContainer.Size = UDim2.new(0.5, -15, 0, 0) -- height driven by content
+        RightContainer.AutomaticSize = Enum.AutomaticSize.Y
         
         RightLayout.Parent = RightContainer
         RightLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -664,7 +666,7 @@ function UILibrary.new(options)
         RightLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
         RightLayout.VerticalAlignment = Enum.VerticalAlignment.Top
 
-        -- Function to update content size
+        -- Function to update canvas size so ScrollingFrame scrolls to fit all content
         local function updateContentSize()
             local leftHeight = LeftLayout.AbsoluteContentSize.Y + 30
             local rightHeight = RightLayout.AbsoluteContentSize.Y + 30
@@ -701,7 +703,8 @@ function UILibrary.new(options)
                 GroupboxFrame.Name = name .. "Groupbox"
                 GroupboxFrame.BackgroundColor3 = options.GroupboxColor
                 GroupboxFrame.BorderSizePixel = 0
-                GroupboxFrame.Size = UDim2.new(1, 0, 0, 40)
+                GroupboxFrame.Size = UDim2.new(1, 0, 0, 0)
+                GroupboxFrame.AutomaticSize = Enum.AutomaticSize.Y
                 GroupboxFrame.LayoutOrder = #self.Groupboxes + 1
 
                 -- Parent to correct container
@@ -733,11 +736,17 @@ function UILibrary.new(options)
                 GroupboxContent.Parent = GroupboxFrame
                 GroupboxContent.BackgroundTransparency = 1
                 GroupboxContent.Position = UDim2.new(0, 12, 0, 35)
-                GroupboxContent.Size = UDim2.new(1, -24, 1, -40)
+                GroupboxContent.Size = UDim2.new(1, -24, 0, 0)
+                GroupboxContent.AutomaticSize = Enum.AutomaticSize.Y
 
                 GroupboxLayout.Parent = GroupboxContent
                 GroupboxLayout.SortOrder = Enum.SortOrder.LayoutOrder
                 GroupboxLayout.Padding = UDim.new(0, 8)
+
+                -- Bottom padding so content doesn't get clipped by the groupbox edge
+                local GroupboxPadding = Instance.new("UIPadding")
+                GroupboxPadding.PaddingBottom = UDim.new(0, 10)
+                GroupboxPadding.Parent = GroupboxContent
 
                 local groupbox = {
                     Frame = GroupboxFrame,
@@ -1713,11 +1722,12 @@ function UILibrary.new(options)
                         return element
                     end,
                     UpdateSize = function(self)
-                        local totalHeight = 40
-                        for _, element in ipairs(self.Elements) do
-                            totalHeight = totalHeight + element.Frame.Size.Y.Offset + 8
-                        end
-                        self.Frame.Size = UDim2.new(1, 0, 0, totalHeight)
+                        -- AutomaticSize handles GroupboxFrame height automatically.
+                        -- We only need to refresh the TabContent canvas so scrolling stays correct.
+                        local leftHeight = LeftLayout.AbsoluteContentSize.Y + 30
+                        local rightHeight = RightLayout.AbsoluteContentSize.Y + 30
+                        local maxHeight = math.max(leftHeight, rightHeight)
+                        TabContent.CanvasSize = UDim2.new(0, 0, 0, maxHeight)
                     end
                 }
 
