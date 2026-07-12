@@ -8,7 +8,28 @@ local Players    = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local LocalPlayer = Players.LocalPlayer
+local Lighting = game:GetService("Lighting")
 
+local World = {
+    RemoveGrass = false,
+
+    TimeEnabled = false,
+    Time = 14,
+
+    AmbientEnabled = false,
+    Ambient = Lighting.Ambient,
+
+    OutdoorAmbientEnabled = false,
+    OutdoorAmbient = Lighting.OutdoorAmbient,
+
+    FogEnabled = false,
+    FogColor = Lighting.FogColor,
+    FogStart = 0,
+    FogEnd = 100000,
+
+    BrightnessEnabled = false,
+    Brightness = Lighting.Brightness,
+}
 -- ══════════════════════════════════════════════════════════════════════
 -- CONFIG & CONFIG VALUES
 -- ══════════════════════════════════════════════════════════════════════
@@ -522,6 +543,58 @@ end
 -- ══════════════════════════════════════════════════════════════════════
 -- MAIN RENDER LOOP
 -- ══════════════════════════════════════════════════════════════════════
+local OriginalLighting = {
+    ClockTime = Lighting.ClockTime,
+    Ambient = Lighting.Ambient,
+    OutdoorAmbient = Lighting.OutdoorAmbient,
+    Brightness = Lighting.Brightness,
+    FogStart = Lighting.FogStart,
+    FogEnd = Lighting.FogEnd,
+    FogColor = Lighting.FogColor
+}
+
+-- ══════════════════════════════════════════════════════════════════════
+-- FIXED VISUALS RENDER LOOP
+-- ══════════════════════════════════════════════════════════════════════
+RunService.RenderStepped:Connect(function()
+    -- Grass (Safely wrapped in pcall, removed sethiddenproperty)
+    pcall(function()
+        workspace.Terrain.Decoration = not World.RemoveGrass
+    end)
+
+    -- Time
+    if World.TimeEnabled then
+        Lighting.ClockTime = World.Time
+    end
+
+    -- Ambient
+    if World.AmbientEnabled then
+        Lighting.Ambient = World.Ambient
+    end
+
+    -- Outdoor Ambient
+    if World.OutdoorAmbientEnabled then
+        Lighting.OutdoorAmbient = World.OutdoorAmbient
+    end
+
+    -- Brightness
+    if World.BrightnessEnabled then
+        Lighting.Brightness = World.Brightness
+    end
+
+    -- Fog & Atmosphere Fix
+    local atmosphere = Lighting:FindFirstChildWhichIsA("Atmosphere")
+    if World.FogEnabled then
+        Lighting.FogStart = World.FogStart
+        Lighting.FogEnd = World.FogEnd
+        Lighting.FogColor = World.FogColor
+        
+        -- Hide Atmosphere so classic fog actually renders
+        if atmosphere then
+            atmosphere.Density = 0 
+        end
+    end
+end)
 RunService.RenderStepped:Connect(function()
     local camera   = workspace.CurrentCamera
     if not camera then return end
@@ -803,4 +876,88 @@ PenGrp:AddToggle("PenViewToggle", {
             PenView_Stop()
         end
     end
+})
+
+local WorldTab = Window:AddTab("Visuals")
+local WorldVis = WorldTab:AddLeftGroupbox("World")
+local LightVis = WorldTab:AddRightGroupbox("Lighting")
+
+WorldVis:AddToggle("RemoveGrass", {
+    Text = "Remove Grass",
+    Default = false,
+    Callback = function(v)
+        World.RemoveGrass = v
+    end
+})
+
+LightVis:AddToggle("TimeToggle", {
+    Text = "Custom Time",
+    Default = false,
+    Callback = function(v)
+        World.TimeEnabled = v
+        if not v then Lighting.ClockTime = OriginalLighting.ClockTime end
+    end
+})
+
+LightVis:AddSlider("TimeSlider", {
+    Text = "Time", Min = 0, Max = 24, Default = 14, Rounding = 1,
+    Callback = function(v) World.Time = v end
+})
+
+LightVis:AddToggle("BrightnessToggle", {
+    Text = "Brightness",
+    Default = false,
+    Callback = function(v)
+        World.BrightnessEnabled = v
+        if not v then Lighting.Brightness = OriginalLighting.Brightness end
+    end
+})
+
+LightVis:AddSlider("BrightnessSlider", {
+    Text = "Brightness Amount", Min = 0, Max = 10, Default = Lighting.Brightness, Rounding = 1,
+    Callback = function(v) World.Brightness = v end
+})
+
+LightVis:AddToggle("AmbientToggle", {
+    Text = "Ambient", Default = false, HasColorPicker = true,
+    Callback = function(v)
+        World.AmbientEnabled = v
+        if not v then Lighting.Ambient = OriginalLighting.Ambient end
+    end,
+    ColorCallback = function(c) World.Ambient = toColor3(c) end,
+})
+
+LightVis:AddToggle("OutdoorAmbientToggle", {
+    Text = "Outdoor Ambient", Default = false, HasColorPicker = true,
+    Callback = function(v)
+        World.OutdoorAmbientEnabled = v
+        if not v then Lighting.OutdoorAmbient = OriginalLighting.OutdoorAmbient end
+    end,
+    ColorCallback = function(c) World.OutdoorAmbient = toColor3(c) end,
+})
+
+LightVis:AddToggle("FogToggle", {
+    Text = "Custom Fog", Default = false, HasColorPicker = true,
+    Callback = function(v)
+        World.FogEnabled = v
+        if not v then 
+            Lighting.FogColor = OriginalLighting.FogColor
+            Lighting.FogStart = OriginalLighting.FogStart
+            Lighting.FogEnd = OriginalLighting.FogEnd
+            -- Restore atmosphere if it exists
+            local atmosphere = Lighting:FindFirstChildWhichIsA("Atmosphere")
+            if atmosphere then atmosphere.Density = 0.3 end -- Default approx density
+        end
+    end,
+    ColorCallback = function(c) World.FogColor = toColor3(c) end,
+})
+
+LightVis:AddSlider("FogStart", {
+    Text = "Fog Start", Min = 0, Max = 5000, Default = 0, Rounding = 0,
+    Callback = function(v) World.FogStart = v end
+})
+
+LightVis:AddSlider("FogEnd", {
+    Text = "Fog End", Min = 0, Max = 100000, Default = 100000, Rounding = 0,
+    Callback = function(v) World.FogEnd = v end
 })
