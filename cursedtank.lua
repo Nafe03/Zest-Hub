@@ -824,7 +824,9 @@ RegElem("FogStart", "Slider", LightVis:AddSlider("FogStart", { Text = "Fog Start
 RegElem("FogEnd", "Slider", LightVis:AddSlider("FogEnd", { Text = "Fog End", Min = 0, Max = 100000, Default = 100000, Rounding = 0, Callback = function(v) World.FogEnd = v end }))
 
 -- ══════════════════════════════════════════════════════════════════════
--- FIXED CONFIGURATION MANAGER
+
+-- ══════════════════════════════════════════════════════════════════════
+-- CONFIGURATION MANAGER
 -- ══════════════════════════════════════════════════════════════════════
 local HttpService = game:GetService("HttpService")
 local CFG_FOLDER  = "CursedTank"
@@ -833,130 +835,140 @@ for _, p in ipairs({ CFG_FOLDER, CFG_SUB }) do
     if not isfolder(p) then makefolder(p) end
 end
 
+-- Helper: Color3 → 6-char hex string
 local function c3hex(c)
     return string.format("%02x%02x%02x",
-        math.round(c.R*255), math.round(c.G*255), math.round(c.B*255))
+        math.round(c.R * 255), math.round(c.G * 255), math.round(c.B * 255))
 end
 
+-- Helper: safely call GetValue/GetColor regardless of method vs plain-function style
+local function safeGet(elem, method)
+    if elem == nil then return nil end
+    local fn = elem[method]
+    if type(fn) == "function" then
+        local ok, v = pcall(fn, elem)   -- try method-call (colon)
+        if ok then return v end
+        ok, v = pcall(fn)               -- fallback: plain call
+        if ok then return v end
+    end
+    return nil
+end
+
+-- Helper: safely call SetValue/SetColor/SetKey/SetMode
+local function safeSet(elem, method, ...)
+    if elem == nil then return end
+    local fn = elem[method]
+    if type(fn) == "function" then
+        local ok = pcall(fn, elem, ...)  -- method-call (colon)
+        if not ok then pcall(fn, ...) end -- fallback: plain call
+    end
+end
+
+-- Build a JSON-serialisable snapshot of every registered element
 local function buildSnapshot()
     local snap = {}
     for id, entry in pairs(_reg) do
         local e, kind = entry.elem, entry.kind
+
         if kind == "Toggle" then
-            local val = type(e.GetValue) == "function" and e:GetValue() or (e.GetValue and e.GetValue()) or e.Value or false
-            local col = e.ColorPicker and ((type(e.ColorPicker.GetColor) == "function" and e.ColorPicker:GetColor()) or (e.ColorPicker.GetColor and e.ColorPicker.GetColor()) or e.ColorPicker.Value)
-            snap[id] = { k="T", v=val, c = col and c3hex(col) or nil }
+            local val = safeGet(e, "GetValue")
+            if val == nil then val = false end
+            local col = nil
+            if e.ColorPicker then
+                local c = safeGet(e.ColorPicker, "GetColor")
+                if c then col = c3hex(c) end
+            end
+            snap[id] = { k = "T", v = val == true, c = col }
+
         elseif kind == "Slider" then
-            snap[id] = { k="S", v = type(e.GetValue) == "function" and e:GetValue() or (e.GetValue and e.GetValue()) or e.Value or 0 }
+            local val = safeGet(e, "GetValue") or 0
+            snap[id] = { k = "S", v = val }
+
         elseif kind == "Dropdown" then
-            snap[id] = { k="D", v = type(e.GetValue) == "function" and e:GetValue() or (e.GetValue and e.GetValue()) or e.Value or "" }
+            local val = safeGet(e, "GetValue") or ""
+            snap[id] = { k = "D", v = tostring(val) }
+
         elseif kind == "ColorPicker" then
-            local col = type(e.GetColor) == "function" and e:GetColor() or (e.GetColor and e.GetColor()) or e.Value
-            if col then snap[id] = { k="C", c = c3hex(col) } end
+            local col = safeGet(e, "GetColor")
+            if col then snap[id] = { k = "C", c = c3hex(col) } end
+
         elseif kind == "KeyPicker" then
-            local key  = type(e.GetValue) == "function" and e:GetValue() or (e.GetValue and e.GetValue()) or e.Value
-            local mode = type(e.GetMode) == "function" and e:GetMode() or (e.GetMode and e.GetMode()) or e.Mode
-            if key then snap[id] = { k="K", v=key.Name, m=mode or "Toggle" } end
+            local key  = safeGet(e, "GetValue")
+            local mode = safeGet(e, "GetMode")
+            if key then
+                snap[id] = { k = "K", v = key.Name, m = mode or "Toggle" }
+            end
         end
     end
     return snap
 end
 
+-- Apply a loaded snapshot back onto every registered element,
+-- then fire the original callback so game variables actually update.
 local function applySnapshot(snap)
     for id, data in pairs(snap) do
         local entry = _reg[id]
         if not entry then continue end
         local e = entry.elem
-        
+
         if data.k == "T" then
+            -- ── Toggle ──────────────────────────────────────────────
             local val = data.v == true
-            if type(e.SetValue) == "function" then 
-                pcall(function() e:SetValue(val) end) 
-            elseif e.SetValue then 
-                pcall(function() e.SetValue(val) end) 
-            else 
-                e.Value = val 
+            safeSet(e, "SetValue", val)
+            -- Fire the callback that was registered with the toggle
+            -- so AimbotEnabled, BoxEnabled, etc. actually change.
+            local reg = _reg[id]
+            if reg and reg.elem then
+                -- Re-invoke the UI element's own internal callback path
+                -- by calling SetValue which the library already wires to Callback.
+                -- (SetValue in the library calls updateToggle → options.Callback)
+                -- Nothing extra needed here — safeSet above covers it.
             end
-            if entry.cb then pcall(entry.cb, val) end
+            -- Restore the color picker colour if one was saved
             if data.c and e.ColorPicker then
-                local ok, col = pcall(function() return Color3.fromHex(data.c) end)
+                local ok, col = pcall(Color3.fromHex, data.c)
                 if ok and col then
-                    if type(e.ColorPicker.SetColor) == "function" then 
-                        pcall(function() e.ColorPicker:SetColor(col) end) 
-                    elseif e.ColorPicker.SetColor then 
-                        pcall(function() e.ColorPicker.SetColor(col) end) 
-                    else 
-                        e.ColorPicker.Value = col 
-                    end
-                    if entry.colorCb then pcall(entry.colorCb, col) end
+                    safeSet(e.ColorPicker, "SetColor", col)
                 end
             end
-            
+
         elseif data.k == "S" then
-            -- Double check we are passing a valid number to sliders
+            -- ── Slider ──────────────────────────────────────────────
             local val = tonumber(data.v) or 0
-            if type(e.SetValue) == "function" then 
-                local ok, err = pcall(function() e:SetValue(val) end)
-                if not ok then
-                    warn("[Config Error] Failed to set slider '" .. tostring(id) .. "': " .. tostring(err))
-                end
-            elseif e.SetValue then 
-                pcall(function() e.SetValue(val) end) 
-            else 
-                e.Value = val 
-            end
-            if entry.cb then pcall(entry.cb, val) end
-            
+            safeSet(e, "SetValue", val)
+
         elseif data.k == "D" then
+            -- ── Dropdown ────────────────────────────────────────────
             if data.v and data.v ~= "" then
-                if type(e.SetValue) == "function" then 
-                    pcall(function() e:SetValue(data.v) end) 
-                elseif e.SetValue then 
-                    pcall(function() e.SetValue(data.v) end) 
-                else 
-                    e.Value = data.v 
-                end
-                if entry.cb then pcall(entry.cb, data.v) end
+                safeSet(e, "SetValue", data.v)
             end
-            
+
         elseif data.k == "C" then
+            -- ── Standalone ColorPicker ───────────────────────────────
             if data.c then
-                local ok, col = pcall(function() return Color3.fromHex(data.c) end)
+                local ok, col = pcall(Color3.fromHex, data.c)
                 if ok and col then
-                    if type(e.SetColor) == "function" then 
-                        pcall(function() e:SetColor(col) end) 
-                    elseif e.SetColor then 
-                        pcall(function() e.SetColor(col) end) 
-                    else 
-                        e.Value = col 
-                    end
-                    if entry.cb then pcall(entry.cb, col) end
+                    safeSet(e, "SetColor", col)
                 end
             end
-            
+
         elseif data.k == "K" then
+            -- ── KeyPicker ───────────────────────────────────────────
             if data.v and data.v ~= "" then
                 local ok, kc = pcall(function() return Enum.KeyCode[data.v] end)
                 if ok and kc then
-                    if type(e.SetKey) == "function" then 
-                        pcall(function() e:SetKey(kc) end) 
-                    elseif e.SetKey then 
-                        pcall(function() e.SetKey(kc) end) 
-                    end
-                    if data.m then
-                        if type(e.SetMode) == "function" then 
-                            pcall(function() e:SetMode(data.m) end) 
-                        elseif e.SetMode then 
-                            pcall(function() e.SetMode(data.m) end) 
-                        end
-                    end
+                    safeSet(e, "SetKey", kc)
                 end
+            end
+            if data.m then
+                safeSet(e, "SetMode", data.m)
             end
         end
     end
 end
 
-local function cfgPath(name)   return CFG_SUB.."/"..name..".json" end
+-- ── File helpers ──────────────────────────────────────────────────────
+local function cfgPath(name) return CFG_SUB .. "/" .. name .. ".json" end
 
 local function listConfigs()
     local out = {}
@@ -970,18 +982,19 @@ local function listConfigs()
 end
 
 local function saveConfig(name)
-    if not name or name:gsub(" ","") == "" then return false, "empty name" end
+    if not name or name:gsub(" ", "") == "" then return false, "empty name" end
     local ok, enc = pcall(HttpService.JSONEncode, HttpService, buildSnapshot())
-    if not ok then return false, "encode error" end
+    if not ok then return false, "encode error: " .. tostring(enc) end
     writefile(cfgPath(name), enc)
     return true
 end
 
 local function loadConfig(name)
     if not name then return false, "no name" end
-    if not isfile(cfgPath(name)) then return false, "not found" end
-    local ok, dec = pcall(HttpService.JSONDecode, HttpService, readfile(cfgPath(name)))
-    if not ok then return false, "decode error" end
+    if not isfile(cfgPath(name)) then return false, "file not found" end
+    local raw = readfile(cfgPath(name))
+    local ok, dec = pcall(HttpService.JSONDecode, HttpService, raw)
+    if not ok then return false, "decode error: " .. tostring(dec) end
     applySnapshot(dec)
     return true
 end
@@ -992,69 +1005,84 @@ local function deleteConfig(name)
 end
 
 local function getAutoload()
-    local p = CFG_SUB.."/autoload.txt"
+    local p = CFG_SUB .. "/autoload.txt"
     return isfile(p) and readfile(p) or nil
 end
 local function setAutoload(name)
-    writefile(CFG_SUB.."/autoload.txt", name or "")
+    writefile(CFG_SUB .. "/autoload.txt", name or "")
 end
 
+-- Auto-load on start (wait for UI to finish building first)
 task.spawn(function()
-    task.wait(1)
+    task.wait(1.5)
     local auto = getAutoload()
     if auto and auto ~= "" then
-        local ok = loadConfig(auto)
-        print(ok and ("[Config] Auto-loaded: "..auto) or "[Config] Auto-load failed")
+        local ok, err = loadConfig(auto)
+        if ok then
+            print("[Config] Auto-loaded: " .. auto)
+            Window:Notify("Auto-loaded: " .. auto, 1, 3)
+        else
+            warn("[Config] Auto-load failed: " .. tostring(err))
+        end
     end
 end)
 
+-- ── Config UI tab ─────────────────────────────────────────────────────
 local CfgTab   = Window:AddTab("Config")
 local CfgLeft  = CfgTab:AddLeftGroupbox("Actions")
 local CfgRight = CfgTab:AddRightGroupbox("Configs")
 
-local _cfgList   = listConfigs()
-local _cfgSel    = nil
-local _cfgSelLbl = nil
+local _cfgList = listConfigs()
+local _cfgSel  = nil
 
-CfgRight:AddDropdown("CfgListDrop", {
+-- Labels (use :SetText() — it IS a method on the element object)
+local _cfgSelLbl = CfgRight:AddLabel("Selected: none")
+local _autoLbl   = CfgRight:AddLabel("Autoload: " .. (getAutoload() or "none"))
+
+-- Dropdown to pick an existing config
+local _cfgDrop = CfgRight:AddDropdown("CfgListDrop", {
     Text     = "Select Config",
-    Values   = #_cfgList > 0 and _cfgList or {"(no configs yet)"},
+    Values   = #_cfgList > 0 and _cfgList or { "(no configs yet)" },
     Default  = 1,
     Callback = function(v)
         if v == "(no configs yet)" then _cfgSel = nil; return end
         _cfgSel = v
-        if _cfgSelLbl then _cfgSelLbl.SetText("Selected: "..v) end
+        _cfgSelLbl:SetText("Selected: " .. v)
     end,
 })
-
-_cfgSelLbl = CfgRight:AddLabel("Selected: none")
 
 CfgRight:AddButton("CfgRefreshBtn", {
     Text = "Refresh List",
     Callback = function()
         _cfgList = listConfigs()
-        local names = table.concat(_cfgList, ", ")
-        print("[Config] "..#_cfgList.." config(s): "..(names ~= "" and names or "none"))
-        Window:Notify(#_cfgList.." config(s) found", 1, 3)
+        -- Rebuild the dropdown values (SetValue to first entry or placeholder)
+        if #_cfgList > 0 then
+            _cfgDrop.SetValue(_cfgList[1])
+            _cfgSel = _cfgList[1]
+            _cfgSelLbl:SetText("Selected: " .. _cfgList[1])
+        else
+            _cfgSel = nil
+            _cfgSelLbl:SetText("Selected: none")
+        end
+        Window:Notify(#_cfgList .. " config(s) found", 1, 3)
+        print("[Config] " .. #_cfgList .. " config(s): " .. table.concat(_cfgList, ", "))
     end,
 })
-
-local _autoLbl = CfgRight:AddLabel("Autoload: "..(getAutoload() or "none"))
 
 CfgLeft:AddButton("CfgSaveNewBtn", {
     Text = "Save New Config",
     Callback = function()
-        local name = "config_"..os.date("%m%d_%H%M%S")
+        local name = "config_" .. os.date("%m%d_%H%M%S")
         local ok, err = saveConfig(name)
         if ok then
             _cfgList = listConfigs()
             _cfgSel  = name
-            if _cfgSelLbl then _cfgSelLbl.SetText("Selected: "..name) end
-            print("[Config] Saved: "..name)
-            Window:Notify("Saved: "..name, 2, 3)
+            _cfgSelLbl:SetText("Selected: " .. name)
+            Window:Notify("Saved: " .. name, 2, 3)
+            print("[Config] Saved: " .. name)
         else
-            warn("[Config] "..tostring(err))
-            Window:Notify("Save failed: "..tostring(err), 3, 3)
+            warn("[Config] Save failed: " .. tostring(err))
+            Window:Notify("Save failed: " .. tostring(err), 3, 3)
         end
     end,
 })
@@ -1065,11 +1093,11 @@ CfgLeft:AddButton("CfgLoadBtn", {
         if not _cfgSel then Window:Notify("Select a config first", 4, 3); return end
         local ok, err = loadConfig(_cfgSel)
         if ok then
-            print("[Config] Loaded: ".._cfgSel)
-            Window:Notify("Loaded: ".._cfgSel, 2, 3)
+            Window:Notify("Loaded: " .. _cfgSel, 2, 3)
+            print("[Config] Loaded: " .. _cfgSel)
         else
-            warn("[Config] "..tostring(err))
-            Window:Notify("Load failed: "..tostring(err), 3, 3)
+            warn("[Config] Load failed: " .. tostring(err))
+            Window:Notify("Load failed: " .. tostring(err), 3, 3)
         end
     end,
 })
@@ -1080,11 +1108,11 @@ CfgLeft:AddButton("CfgOverwriteBtn", {
         if not _cfgSel then Window:Notify("Select a config first", 4, 3); return end
         local ok, err = saveConfig(_cfgSel)
         if ok then
-            print("[Config] Overwritten: ".._cfgSel)
-            Window:Notify("Overwritten: ".._cfgSel, 2, 3)
+            Window:Notify("Overwritten: " .. _cfgSel, 2, 3)
+            print("[Config] Overwritten: " .. _cfgSel)
         else
-            warn("[Config] "..tostring(err))
-            Window:Notify("Overwrite failed: "..tostring(err), 3, 3)
+            warn("[Config] Overwrite failed: " .. tostring(err))
+            Window:Notify("Overwrite failed: " .. tostring(err), 3, 3)
         end
     end,
 })
@@ -1094,11 +1122,11 @@ CfgLeft:AddButton("CfgDeleteBtn", {
     Callback = function()
         if not _cfgSel then Window:Notify("Select a config first", 4, 3); return end
         deleteConfig(_cfgSel)
-        print("[Config] Deleted: ".._cfgSel)
-        Window:Notify("Deleted: ".._cfgSel, 3, 3)
+        print("[Config] Deleted: " .. _cfgSel)
+        Window:Notify("Deleted: " .. _cfgSel, 3, 3)
         _cfgSel  = nil
         _cfgList = listConfigs()
-        if _cfgSelLbl then _cfgSelLbl.SetText("Selected: none") end
+        _cfgSelLbl:SetText("Selected: none")
     end,
 })
 
@@ -1107,9 +1135,9 @@ CfgLeft:AddButton("CfgAutoloadBtn", {
     Callback = function()
         if not _cfgSel then Window:Notify("Select a config first", 4, 3); return end
         setAutoload(_cfgSel)
-        _autoLbl.SetText("Autoload: ".._cfgSel)
-        print("[Config] Autoload → ".._cfgSel)
-        Window:Notify("Autoload set: ".._cfgSel, 2, 3)
+        _autoLbl:SetText("Autoload: " .. _cfgSel)
+        print("[Config] Autoload → " .. _cfgSel)
+        Window:Notify("Autoload set: " .. _cfgSel, 2, 3)
     end,
 })
 
@@ -1117,7 +1145,7 @@ CfgLeft:AddButton("CfgClearAutoBtn", {
     Text = "Clear Autoload",
     Callback = function()
         setAutoload("")
-        _autoLbl.SetText("Autoload: none")
+        _autoLbl:SetText("Autoload: none")
         print("[Config] Autoload cleared")
         Window:Notify("Autoload cleared", 1, 3)
     end,
