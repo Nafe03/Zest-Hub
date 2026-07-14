@@ -6,7 +6,6 @@ local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local TextService = game:GetService("TextService")
 
--- Color conversion functions
 local function HSVtoRGB(h, s, v)
     local r, g, b
     local i = math.floor(h * 6)
@@ -277,7 +276,6 @@ local function createColorPickerIcon(iconParent, iconOffset, defaultColor, callb
     hueButtonStroke.Thickness = 2
     hueButtonStroke.Parent = hueSliderButton
 
-    -- Color picker logic
     local currentColor = defaultColor or Color3.new(1, 1, 1)
     local hue, saturation, value = 0, 0, 1
     local updating = false
@@ -312,7 +310,6 @@ local function createColorPickerIcon(iconParent, iconOffset, defaultColor, callb
         updateColor()
     end
 
-    -- High performance drag implementation (Dynamic connection binding)
     local hueDragging = false
     local svDragging = false
     local dragConn, releaseConn
@@ -466,6 +463,7 @@ function UILibrary.new(options)
     local defaultOptions = {
         Name = "UI Library",
         ToggleKey = Enum.KeyCode.RightShift,
+        CloseKey = Enum.KeyCode.X,
         DefaultColor = Color3.fromRGB(138, 102, 204),
         TextColor = Color3.fromRGB(220, 220, 220),
         BackgroundColor = Color3.fromRGB(18, 18, 18),
@@ -475,7 +473,7 @@ function UILibrary.new(options)
         Position = UDim2.new(0.226, 0, 0.146, 0),
         Theme = "Dark",
         Watermark = true,
-        WatermarkText = "UI Library v1.0.0"
+        WatermarkText = ""
     }
     
     for option, value in pairs(defaultOptions) do
@@ -568,6 +566,20 @@ function UILibrary.new(options)
     local tabs = {}
     local currentTab = nil
 
+    local NotifyHolder = Instance.new("Frame")
+    NotifyHolder.Name = "NotifyHolder"
+    NotifyHolder.Parent = ScreenGui
+    NotifyHolder.BackgroundTransparency = 1
+    NotifyHolder.Position = UDim2.new(1, -220, 0, 20) -- Aligns to the top right of the screen
+    NotifyHolder.Size = UDim2.new(0, 200, 1, -40)
+    NotifyHolder.ZIndex = 100
+    
+    local NotifyLayout = Instance.new("UIListLayout")
+    NotifyLayout.Parent = NotifyHolder
+    NotifyLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    NotifyLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom -- New notifications appear at the bottom
+    NotifyLayout.Padding = UDim.new(0, 10)
+
     -- Window object
     local Window = {}
     Window.ActiveTab = nil
@@ -585,6 +597,79 @@ function UILibrary.new(options)
 
     trackConnection(UserInputService.InputBegan:Connect(handleInput))
 
+    function Window:Notify(text, style, duration)
+        if typeof(style) == "number" and duration == nil then
+            if style > 4 then
+                duration = style
+                style = 1
+            end
+        end
+
+        style = style or 1
+        duration = duration or 3
+
+        local notifyColor = Window.DefaultColor
+        if style == 1 then
+            notifyColor = Window.DefaultColor
+        elseif style == 2 then
+            notifyColor = Color3.fromRGB(235, 175, 75)  
+        elseif style == 3 then
+            notifyColor = Color3.fromRGB(235, 85, 85)   
+        elseif style == 4 then
+            notifyColor = Color3.fromRGB(85, 185, 235)  
+        elseif typeof(style) == "Color3" then
+            notifyColor = style                         
+        end
+
+        local NotifyFrame = Instance.new("Frame")
+        NotifyFrame.Name = "NotifyFrame"
+        NotifyFrame.Parent = NotifyHolder
+        NotifyFrame.BackgroundTransparency = 1
+        NotifyFrame.Size = UDim2.new(1, 0, 0, 30)
+
+        local NotifyText = Instance.new("TextLabel")
+        NotifyText.Name = "NotifyText"
+        NotifyText.Parent = NotifyFrame
+        NotifyText.BackgroundTransparency = 1
+        NotifyText.Size = UDim2.new(1, 0, 1, -5)
+        NotifyText.Font = Enum.Font.GothamBold
+        NotifyText.Text = text
+        NotifyText.TextColor3 = notifyColor
+        NotifyText.TextSize = 14
+        NotifyText.TextXAlignment = Enum.TextXAlignment.Center
+        NotifyText.TextStrokeTransparency = 0.93
+        NotifyText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0) -- Subtle text contrast outline
+        NotifyText.TextTransparency = 1
+
+        local NotifyLine = Instance.new("Frame")
+        NotifyLine.Name = "NotifyLine"
+        NotifyLine.Parent = NotifyText
+        NotifyLine.BackgroundColor3 = notifyColor
+        NotifyLine.BorderSizePixel = 0
+        NotifyLine.Position = UDim2.new(0.25, 0, 1, 2)
+        NotifyLine.Size = UDim2.new(0.5, 0, 0, 1)
+        NotifyLine.BackgroundTransparency = 1
+
+        local LineCorner = Instance.new("UICorner")
+        LineCorner.CornerRadius = UDim.new(0, 12)
+        LineCorner.Parent = NotifyLine
+
+        -- Smooth transitions using your existing tween library function[cite: 1]
+        smoothTween(NotifyText, {TextTransparency = 0}, 0.3)
+        smoothTween(NotifyLine, {BackgroundTransparency = 0}, 0.3)
+
+        -- Handle auto-destruction
+        task.spawn(function()
+            task.wait(duration)
+
+            -- Animate out
+            smoothTween(NotifyText, {TextTransparency = 1}, 0.3)
+            local fadeOut = smoothTween(NotifyLine, {BackgroundTransparency = 1}, 0.3)
+
+            fadeOut.Completed:Wait()
+            NotifyFrame:Destroy()
+        end)
+    end
     function Window:AddTab(name)
         local TabButton = Instance.new("TextButton")
         local TabContent = Instance.new("ScrollingFrame")
