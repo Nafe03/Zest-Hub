@@ -11,6 +11,15 @@ local Lighting         = game:GetService("Lighting")
 
 local LocalPlayer = Players.LocalPlayer
 
+
+
+local _reg = {}
+local function RegElem(id, kind, elem)
+    _reg[id] = { elem = elem, kind = kind }
+    return elem
+end
+
+
 local World = {
     RemoveGrass = false,
 
@@ -32,10 +41,6 @@ local World = {
     Brightness = Lighting.Brightness,
 }
 
--- ══════════════════════════════════════════════════════════════════════
--- CONFIG & CONFIG VALUES
--- ══════════════════════════════════════════════════════════════════════
--- ESP
 local BoxEnabled       = false
 local BoxFilled        = true
 local BoxColor         = Color3.fromRGB(255, 255, 255)
@@ -43,6 +48,7 @@ local BoxFillColor     = Color3.fromRGB(255, 0, 0)
 local BoxFillTrans     = 0.7
 local BoxThickness     = 1
 local BoxRounding      = 0
+local DistanceEnabled  = false -- NEW: Distance ESP Toggle
 local GradientEnabled  = false
 local GradientColorA   = Color3.fromRGB(255, 0, 0)
 local GradientColorB   = Color3.fromRGB(0, 255, 0)
@@ -102,9 +108,8 @@ local NameLabels     = {}
 local AmmoLabels     = {}   
 local AmmoHighlights = {}   
 
--- High-performance optimization caches
-local AmmoCache      = {} -- Caches recursive ammo model lookups
-local TeamColorCache = {} -- Faster team color reads
+local AmmoCache      = {} 
+local TeamColorCache = {} 
 
 local FovCircle = Draw.new("Circle")
 FovCircle.Visible = false
@@ -150,7 +155,6 @@ local function getPlayerName(chassisName)
     return chassisName:match("^Chassis(.+)$") or chassisName
 end
 
--- OPTIMIZED: Avoids loops by indexing players directly via FindFirstChild[cite: 2]
 local function getTeamColor(playerName)
     local p = Players:FindFirstChild(playerName)
     if p and p.Team then
@@ -170,7 +174,6 @@ local function collectAllAmmo(parent, results)
     return results
 end
 
--- OPTIMIZED: Prioritizes direct lookups to avoid expensive GetAttributes loops[cite: 2]
 local function readAmmoAttribute(meshPart)
     local v = meshPart:GetAttribute("Ammo") or meshPart:GetAttribute("ammo") or 
               meshPart:GetAttribute("AmmoCount") or meshPart:GetAttribute("Count") or 
@@ -439,7 +442,6 @@ local function hideAmmo(mp)
     if AmmoHighlights[mp] then AmmoHighlights[mp].Enabled = false end
 end
 
--- OPTIMIZED: Clears stagnant lookup caches during the normal cleanup cycle[cite: 2]
 local function cleanupStaleChassis()
     local vehicles = workspace:FindFirstChild("Vehicles")
     for key in pairs(Boxes) do
@@ -465,7 +467,6 @@ local OriginalLighting = {
 }
 
 RunService.RenderStepped:Connect(function()
-    -- Visuals Fixes
     pcall(function() workspace.Terrain.Decoration = not World.RemoveGrass end)
     if World.TimeEnabled then Lighting.ClockTime = World.Time end
     if World.AmbientEnabled then Lighting.Ambient = World.Ambient end
@@ -483,7 +484,6 @@ RunService.RenderStepped:Connect(function()
     local vehicles = workspace:FindFirstChild("Vehicles")
     local mouseLoc = UserInputService:GetMouseLocation()
 
-    -- FOV Update
     FovCircle.Visible = FovEnabled; FovCircle.Radius = FovRadius; FovCircle.Position = mouseLoc
     FovCircle.Color = FovColor; FovCircle.Thickness = FovThickness; FovCircle.Transparency = FovTransparency
 
@@ -517,15 +517,12 @@ RunService.RenderStepped:Connect(function()
 
         local rootPt = chassis:FindFirstChild("VehicleSeat") or chassis.PrimaryPart or chassis:FindFirstChildWhichIsA("BasePart")
         
-        -- OPTIMIZED: Grabs data straight from cache instead of looping :GetChildren recursive every single frame[cite: 2]
         local allAmmo = AmmoCache[chassis]
         if not allAmmo then
             allAmmo = collectAllAmmo(chassis)
             AmmoCache[chassis] = allAmmo
         end
 
-        -- ── 1. Aimbot Logic ──────────────────────────────────────────
-        -- OPTIMIZED: Strict verification context wrapper prevents executing calculations/raycasts when key isn't held[cite: 2]
         if AimbotEnabled and IsAiming then
             local potentialTargets = {}
             if AimTargetPart == "Both" or AimTargetPart == "Root" then
@@ -584,7 +581,6 @@ RunService.RenderStepped:Connect(function()
             end
         end
 
-        -- ── 2. Box ESP ───────────────────────────────────────────────
         local box, nameLabel = getOrCreateChassis(chassisName)
         if rootPt and BoxEnabled then
             local rootPos, onScreen = camera:WorldToViewportPoint(rootPt.Position)
@@ -601,7 +597,13 @@ RunService.RenderStepped:Connect(function()
                 if onTop and onBottom and onRight and onLeft then
                     local width = math.abs(rightPos.X - leftPos.X); local height = math.abs(bottomPos.Y - topPos.Y)
                     box.Size = Vector2.new(width, height); box.Position = Vector2.new(rootPos.X - width / 2, topPos.Y); box.Visible = true
-                    nameLabel.Text = playerName; nameLabel.Position = Vector2.new(rootPos.X, topPos.Y - 16)
+                    
+                    -- IMPLEMENTED: Calculate distance and append to the ESP text[cite: 3]
+                    local distMagnitude = (camera.CFrame.Position - rootPt.Position).Magnitude
+                    local distText = DistanceEnabled and (" [" .. math.floor(distMagnitude) .. "s]") or ""
+                    
+                    nameLabel.Text = playerName .. distText
+                    nameLabel.Position = Vector2.new(rootPos.X, topPos.Y - 16)
                     nameLabel.Color = teamColor or Color3.fromRGB(255, 255, 255); nameLabel.Visible = true
                 else
                     hideChassis(chassisName)
@@ -609,7 +611,6 @@ RunService.RenderStepped:Connect(function()
             else hideChassis(chassisName) end
         else hideChassis(chassisName) end
 
-        -- ── 3. Ammo ESP ──────────────────────────────────────────────
         for i, mp in ipairs(allAmmo) do
             touchedAmmo[mp] = true
             local lbl, hl = getOrCreateAmmo(mp)
@@ -635,7 +636,6 @@ RunService.RenderStepped:Connect(function()
 
     for mp in pairs(AmmoLabels) do if not touchedAmmo[mp] then hideAmmo(mp) end end
 
-    -- ── MOUSE-BASED AIMBOT EXECUTION ─────────────────────────────────
     if IsAiming and AimbotEnabled and bestTarget and mousemoverel then
         local screenPos, onScreen = camera:WorldToViewportPoint(bestTarget.Position)
         if onScreen then
@@ -647,7 +647,7 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ══════════════════════════════════════════════════════════════════════
--- WINDOW SETUP
+-- WINDOW SETUP (CONFIG REGISTRATION APPLIED)
 -- ══════════════════════════════════════════════════════════════════════
 local Window = UILibrary.new({
     Name          = "Zest Hub",
@@ -666,155 +666,415 @@ local AimTab   = Window:AddTab("Aimbot")
 local AimGrp   = AimTab:AddLeftGroupbox("Targeting")
 local FovGrp   = AimTab:AddRightGroupbox("Field of View")
 
-AimGrp:AddToggle("AimToggle", {
+RegElem("AimToggle", "Toggle", AimGrp:AddToggle("AimToggle", {
     Text = "Enable Aimbot", Default = false,
     Callback = function(v) AimbotEnabled = v end
-})
+}))
 
-AimGrp:AddDropdown("AimKeybind", {
+RegElem("AimKeybind", "Dropdown", AimGrp:AddDropdown("AimKeybind", {
     Text = "Aim Keybind", Values = {"MouseButton2", "E", "Q", "C", "V", "LeftAlt"}, Default = 1, Multi = false,
     Callback = function(v)
         if v == "MouseButton2" then AimbotKey = Enum.UserInputType.MouseButton2
         else AimbotKey = Enum.KeyCode[v] end
     end,
-})
+}))
 
-AimGrp:AddSlider("AimSmoothing", {
+RegElem("AimSmoothing", "Slider", AimGrp:AddSlider("AimSmoothing", {
     Text = "Mouse Smoothing", Min = 0.05, Max = 1, Default = 0.25, Rounding = 2,
     Callback = function(v) AimbotSmoothing = v end,
-})
+}))
 
-AimGrp:AddDropdown("AimTargetPart", {
+RegElem("AimTargetPart", "Dropdown", AimGrp:AddDropdown("AimTargetPart", {
     Text = "Target Parts", Values = {"Both", "Ammo", "Root"}, Default = 1, Multi = false,
     Callback = function(v) AimTargetPart = v end,
-})
+}))
 
-AimGrp:AddToggle("AimPrioritizePen", {
+RegElem("AimPrioritizePen", "Toggle", AimGrp:AddToggle("AimPrioritizePen", {
     Text = "Prioritize Penetrable Parts", Default = true,
     Tooltip = "Prioritizes targets where armor thickness is less than your shell pen.",
     Callback = function(v) AimPrioritizePen = v end
-})
+}))
 
-AimGrp:AddToggle("AimStrictPen", {
+RegElem("AimStrictPen", "Toggle", AimGrp:AddToggle("AimStrictPen", {
     Text = "Strict Penetration Mode", Default = false,
     Tooltip = "Aimbot will IGNORE parts it cannot penetrate.",
     Callback = function(v) AimStrictPen = v end
-})
+}))
 
-FovGrp:AddToggle("FovToggle", {
+RegElem("FovToggle", "Toggle", FovGrp:AddToggle("FovToggle", {
     Text = "Show FOV Circle", Default = false, HasColorPicker = true,
     Callback = function(v) FovEnabled = v end,
     ColorCallback = function(c) FovColor = toColor3(c) end,
-})
+}))
 
-FovGrp:AddSlider("FovRadiusSlider", {
+RegElem("FovRadiusSlider", "Slider", FovGrp:AddSlider("FovRadiusSlider", {
     Text = "FOV Radius", Min = 10, Max = 1000, Default = 150, Rounding = 0,
     Callback = function(v) FovRadius = v end,
-})
+}))
 
-FovGrp:AddSlider("FovThicknessSlider", {
+RegElem("FovThicknessSlider", "Slider", FovGrp:AddSlider("FovThicknessSlider", {
     Text = "FOV Thickness", Min = 1, Max = 5, Default = 1, Rounding = 1,
     Callback = function(v) FovThickness = v end,
-})
+}))
 
 -- ── TAB 2 — Chassis ESP ───────────────────────────────────────────────
 local MainTab  = Window:AddTab("ESP")
 local LeftGrp  = MainTab:AddLeftGroupbox("Box ESP")
 local RightGrp = MainTab:AddRightGroupbox("Fill & Gradient")
 
-LeftGrp:AddToggle("BoxToggle", {
+RegElem("BoxToggle", "Toggle", LeftGrp:AddToggle("BoxToggle", {
     Text = "Enable Box ESP", Default = false, HasColorPicker = true,
     Callback = function(v) BoxEnabled = v; if not v then for key in pairs(Boxes) do hideChassis(key) end end end,
     ColorCallback = function(c) BoxColor = toColor3(c) end,
-})
+}))
 
-LeftGrp:AddSlider("BoxThicknessSlider", {
+RegElem("BoxThicknessSlider", "Slider", LeftGrp:AddSlider("BoxThicknessSlider", {
     Text = "Outline Thickness", Min = 0, Max = 5, Default = 1, Rounding = 1,
     Callback = function(v) BoxThickness = v; for _, b in pairs(Boxes) do b.Thickness = v end end,
-})
+}))
 
-LeftGrp:AddSlider("BoxRoundingSlider", {
+RegElem("BoxRoundingSlider", "Slider", LeftGrp:AddSlider("BoxRoundingSlider", {
     Text = "Corner Rounding", Min = 0, Max = 12, Default = 0, Rounding = 1,
     Callback = function(v) BoxRounding = v; for _, b in pairs(Boxes) do b.Rounding = v end end,
-})
+}))
 
-RightGrp:AddToggle("BoxFillToggle", {
+-- IMPLEMENTED: Distance Toggle UI Registration[cite: 3]
+RegElem("DistanceToggle", "Toggle", LeftGrp:AddToggle("DistanceToggle", {
+    Text = "Show Distance", Default = false,
+    Callback = function(v) DistanceEnabled = v end,
+}))
+
+RegElem("BoxFillToggle", "Toggle", RightGrp:AddToggle("BoxFillToggle", {
     Text = "Enable Fill", Default = true, HasColorPicker = true,
     Callback = function(v) BoxFilled = v; for _, b in pairs(Boxes) do b.Filled = v end end,
     ColorCallback = function(c) BoxFillColor = toColor3(c); for _, b in pairs(Boxes) do b.FillColor = BoxFillColor end end,
-})
+}))
 
-RightGrp:AddSlider("BoxFillTransSlider", {
+RegElem("BoxFillTransSlider", "Slider", RightGrp:AddSlider("BoxFillTransSlider", {
     Text = "Fill Transparency", Min = 0, Max = 100, Default = 70, Rounding = 2,
     Callback = function(v) BoxFillTrans = v / 100; for _, b in pairs(Boxes) do b.FillTransparency = BoxFillTrans end end,
-})
+}))
 
-RightGrp:AddDropdown("BoxGradientStops", {
+RegElem("BoxGradientStops", "Dropdown", RightGrp:AddDropdown("BoxGradientStops", {
     Text = "Gradient Stops", Values = { "2", "3" }, Default = 1, Multi = false,
     Callback = function(v) GradientStops = tonumber(v); if GradientEnabled then refreshGradient() end end,
-})
+}))
 
-local espToggle = RightGrp:AddToggle("BoxGradientToggle", {
+local espToggle = RegElem("BoxGradientToggle", "Toggle", RightGrp:AddToggle("BoxGradientToggle", {
     Text = "Enable Gradient", Default = false, HasColorPicker = true,
     Callback = function(v) GradientEnabled = v; refreshGradient() end,
     ColorCallback = function(c) GradientColorA = toColor3(c); if GradientEnabled then refreshGradient() end end,
-})
+}))
 
-espToggle:AddColorPickerIcon("GradientColorB", { Default = GradientColorB, Callback = function(c) GradientColorB = toColor3(c); if GradientEnabled then refreshGradient() end end })
-espToggle:AddColorPickerIcon("GradientColorC", { Default = GradientColorC, Callback = function(c) GradientColorC = toColor3(c); if GradientEnabled and GradientStops == 3 then refreshGradient() end end })
+RegElem("GradientColorB", "ColorPicker", espToggle:AddColorPickerIcon("GradientColorB", { Default = GradientColorB, Callback = function(c) GradientColorB = toColor3(c); if GradientEnabled then refreshGradient() end end }))
+RegElem("GradientColorC", "ColorPicker", espToggle:AddColorPickerIcon("GradientColorC", { Default = GradientColorC, Callback = function(c) GradientColorC = toColor3(c); if GradientEnabled and GradientStops == 3 then refreshGradient() end end }))
 
-RightGrp:AddSlider("BoxGradientRotation", {
+RegElem("BoxGradientRotation", "Slider", RightGrp:AddSlider("BoxGradientRotation", {
     Text = "Gradient Angle", Min = 0, Max = 360, Default = 90, Rounding = 1,
     Callback = function(v) GradientRotation = v; for _, b in pairs(Boxes) do b.GradientRotation = v end end,
-})
+}))
 
 -- ── TAB 3 — Ammo ESP ──────────────────────────────────────────────────
 local AmmoTab   = Window:AddTab("Ammo ESP")
 local ALeftGrp  = AmmoTab:AddLeftGroupbox("Ammo Label")
 local ARightGrp = AmmoTab:AddRightGroupbox("Ammo Highlight")
 
-ALeftGrp:AddToggle("AmmoLabelToggle", {
+RegElem("AmmoLabelToggle", "Toggle", ALeftGrp:AddToggle("AmmoLabelToggle", {
     Text = "Show Ammo Labels", Default = true, HasColorPicker = true,
     Callback = function(v) AmmoLabelEnabled = v; if not v then for _, lbl in pairs(AmmoLabels) do lbl.Visible = false end end end,
     ColorCallback = function(c) AmmoLabelColor = toColor3(c); for _, lbl in pairs(AmmoLabels) do lbl.Color = AmmoLabelColor end end,
-})
+}))
 
-ARightGrp:AddToggle("AmmoHighlightToggle", {
+RegElem("AmmoHighlightToggle", "Toggle", ARightGrp:AddToggle("AmmoHighlightToggle", {
     Text = "Highlight Ammo Mesh", Default = true, HasColorPicker = true,
     Callback = function(v) AmmoHighlightEnabled = v; if not v then for _, hl in pairs(AmmoHighlights) do hl.Enabled = false end end end,
     ColorCallback = function(c) AmmoHighlightFillColor = toColor3(c); for _, hl in pairs(AmmoHighlights) do hl.FillColor = AmmoHighlightFillColor end end,
-})
+}))
 
-ARightGrp:AddSlider("HighlightFillTransSlider", {
+RegElem("HighlightFillTransSlider", "Slider", ARightGrp:AddSlider("HighlightFillTransSlider", {
     Text = "Fill Transparency", Min = 0, Max = 100, Default = 50, Rounding = 0,
     Callback = function(v) AmmoHighlightFillTrans = v / 100; for _, hl in pairs(AmmoHighlights) do hl.FillTransparency = AmmoHighlightFillTrans end end,
-})
+}))
 
-ARightGrp:AddSlider("HighlightOutlineTransSlider", {
+RegElem("HighlightOutlineTransSlider", "Slider", ARightGrp:AddSlider("HighlightOutlineTransSlider", {
     Text = "Outline Transparency", Min = 0, Max = 100, Default = 0, Rounding = 0,
     Callback = function(v) AmmoHighlightOutlineTrans = v / 100; for _, hl in pairs(AmmoHighlights) do hl.OutlineTransparency = AmmoHighlightOutlineTrans end end,
-})
+}))
 
 -- ── TAB 4 — Combat / Pen View ─────────────────────────────────────────
 local CombatTab = Window:AddTab("Pen View")
 local PenGrp    = CombatTab:AddLeftGroupbox("Penetration Indicator")
 
-PenGrp:AddToggle("PenViewToggle", {
+RegElem("PenViewToggle", "Toggle", PenGrp:AddToggle("PenViewToggle", {
     Text = "Enable Pen View", Default = false,
     Callback = function(v) Other.PenView = v; if v then PenView_Start() else PenView_Stop() end end
-})
+}))
 
+-- ── TAB 5 — Visuals ───────────────────────────────────────────────────
 local WorldTab = Window:AddTab("Visuals")
 local WorldVis = WorldTab:AddLeftGroupbox("World")
 local LightVis = WorldTab:AddRightGroupbox("Lighting")
 
-WorldVis:AddToggle("RemoveGrass", { Text = "Remove Grass", Default = false, Callback = function(v) World.RemoveGrass = v end })
-LightVis:AddToggle("TimeToggle", { Text = "Custom Time", Default = false, Callback = function(v) World.TimeEnabled = v; if not v then Lighting.ClockTime = OriginalLighting.ClockTime end end })
-LightVis:AddSlider("TimeSlider", { Text = "Time", Min = 0, Max = 24, Default = 14, Rounding = 1, Callback = function(v) World.Time = v end })
-LightVis:AddToggle("BrightnessToggle", { Text = "Brightness", Default = false, Callback = function(v) World.BrightnessEnabled = v; if not v then Lighting.Brightness = OriginalLighting.Brightness end end })
-LightVis:AddSlider("BrightnessSlider", { Text = "Brightness Amount", Min = 0, Max = 10, Default = Lighting.Brightness, Rounding = 1, Callback = function(v) World.Brightness = v end })
-LightVis:AddToggle("AmbientToggle", { Text = "Ambient", Default = false, HasColorPicker = true, Callback = function(v) World.AmbientEnabled = v; if not v then Lighting.Ambient = OriginalLighting.Ambient end end, ColorCallback = function(c) World.Ambient = toColor3(c) end })
-LightVis:AddToggle("OutdoorAmbientToggle", { Text = "Outdoor Ambient", Default = false, HasColorPicker = true, Callback = function(v) World.OutdoorAmbientEnabled = v; if not v then Lighting.OutdoorAmbient = OriginalLighting.OutdoorAmbient end end, ColorCallback = function(c) World.OutdoorAmbient = toColor3(c) end })
-LightVis:AddToggle("FogToggle", { Text = "Custom Fog", Default = false, HasColorPicker = true, Callback = function(v) World.FogEnabled = v; if not v then Lighting.FogColor = OriginalLighting.FogColor; Lighting.FogStart = OriginalLighting.FogStart; Lighting.FogEnd = OriginalLighting.FogEnd; local atmosphere = Lighting:FindFirstChildWhichIsA("Atmosphere"); if atmosphere then atmosphere.Density = 0.3 end end end, ColorCallback = function(c) World.FogColor = toColor3(c) end })
-LightVis:AddSlider("FogStart", { Text = "Fog Start", Min = 0, Max = 5000, Default = 0, Rounding = 0, Callback = function(v) World.FogStart = v end })
-LightVis:AddSlider("FogEnd", { Text = "Fog End", Min = 0, Max = 100000, Default = 100000, Rounding = 0, Callback = function(v) World.FogEnd = v end })
+RegElem("RemoveGrass", "Toggle", WorldVis:AddToggle("RemoveGrass", { Text = "Remove Grass", Default = false, Callback = function(v) World.RemoveGrass = v end }))
+RegElem("TimeToggle", "Toggle", LightVis:AddToggle("TimeToggle", { Text = "Custom Time", Default = false, Callback = function(v) World.TimeEnabled = v; if not v then Lighting.ClockTime = OriginalLighting.ClockTime end end }))
+RegElem("TimeSlider", "Slider", LightVis:AddSlider("TimeSlider", { Text = "Time", Min = 0, Max = 24, Default = 14, Rounding = 1, Callback = function(v) World.Time = v end }))
+RegElem("BrightnessToggle", "Toggle", LightVis:AddToggle("BrightnessToggle", { Text = "Brightness", Default = false, Callback = function(v) World.BrightnessEnabled = v; if not v then Lighting.Brightness = OriginalLighting.Brightness end end }))
+RegElem("BrightnessSlider", "Slider", LightVis:AddSlider("BrightnessSlider", { Text = "Brightness Amount", Min = 0, Max = 10, Default = Lighting.Brightness, Rounding = 1, Callback = function(v) World.Brightness = v end }))
+RegElem("AmbientToggle", "Toggle", LightVis:AddToggle("AmbientToggle", { Text = "Ambient", Default = false, HasColorPicker = true, Callback = function(v) World.AmbientEnabled = v; if not v then Lighting.Ambient = OriginalLighting.Ambient end end, ColorCallback = function(c) World.Ambient = toColor3(c) end }))
+RegElem("OutdoorAmbientToggle", "Toggle", LightVis:AddToggle("OutdoorAmbientToggle", { Text = "Outdoor Ambient", Default = false, HasColorPicker = true, Callback = function(v) World.OutdoorAmbientEnabled = v; if not v then Lighting.OutdoorAmbient = OriginalLighting.OutdoorAmbient end end, ColorCallback = function(c) World.OutdoorAmbient = toColor3(c) end }))
+RegElem("FogToggle", "Toggle", LightVis:AddToggle("FogToggle", { Text = "Custom Fog", Default = false, HasColorPicker = true, Callback = function(v) World.FogEnabled = v; if not v then Lighting.FogColor = OriginalLighting.FogColor; Lighting.FogStart = OriginalLighting.FogStart; Lighting.FogEnd = OriginalLighting.FogEnd; local atmosphere = Lighting:FindFirstChildWhichIsA("Atmosphere"); if atmosphere then atmosphere.Density = 0.3 end end end, ColorCallback = function(c) World.FogColor = toColor3(c) end }))
+RegElem("FogStart", "Slider", LightVis:AddSlider("FogStart", { Text = "Fog Start", Min = 0, Max = 5000, Default = 0, Rounding = 0, Callback = function(v) World.FogStart = v end }))
+RegElem("FogEnd", "Slider", LightVis:AddSlider("FogEnd", { Text = "Fog End", Min = 0, Max = 100000, Default = 100000, Rounding = 0, Callback = function(v) World.FogEnd = v end }))
+
+-- ══════════════════════════════════════════════════════════════════════
+-- FIXED CONFIGURATION MANAGER
+-- ══════════════════════════════════════════════════════════════════════
+local HttpService = game:GetService("HttpService")
+local CFG_FOLDER  = "CursedTank"
+local CFG_SUB     = "CursedTank/configs"
+for _, p in ipairs({ CFG_FOLDER, CFG_SUB }) do
+    if not isfolder(p) then makefolder(p) end
+end
+
+local function c3hex(c)
+    return string.format("%02x%02x%02x",
+        math.round(c.R*255), math.round(c.G*255), math.round(c.B*255))
+end
+
+local function buildSnapshot()
+    local snap = {}
+    for id, entry in pairs(_reg) do
+        local e, kind = entry.elem, entry.kind
+        if kind == "Toggle" then
+            local val = type(e.GetValue) == "function" and e:GetValue() or (e.GetValue and e.GetValue()) or e.Value or false
+            local col = e.ColorPicker and ((type(e.ColorPicker.GetColor) == "function" and e.ColorPicker:GetColor()) or (e.ColorPicker.GetColor and e.ColorPicker.GetColor()) or e.ColorPicker.Value)
+            snap[id] = { k="T", v=val, c = col and c3hex(col) or nil }
+        elseif kind == "Slider" then
+            snap[id] = { k="S", v = type(e.GetValue) == "function" and e:GetValue() or (e.GetValue and e.GetValue()) or e.Value or 0 }
+        elseif kind == "Dropdown" then
+            snap[id] = { k="D", v = type(e.GetValue) == "function" and e:GetValue() or (e.GetValue and e.GetValue()) or e.Value or "" }
+        elseif kind == "ColorPicker" then
+            local col = type(e.GetColor) == "function" and e:GetColor() or (e.GetColor and e.GetColor()) or e.Value
+            if col then snap[id] = { k="C", c = c3hex(col) } end
+        elseif kind == "KeyPicker" then
+            local key  = type(e.GetValue) == "function" and e:GetValue() or (e.GetValue and e.GetValue()) or e.Value
+            local mode = type(e.GetMode) == "function" and e:GetMode() or (e.GetMode and e.GetMode()) or e.Mode
+            if key then snap[id] = { k="K", v=key.Name, m=mode or "Toggle" } end
+        end
+    end
+    return snap
+end
+
+local function applySnapshot(snap)
+    for id, data in pairs(snap) do
+        local entry = _reg[id]
+        if not entry then continue end
+        local e = entry.elem
+        if data.k == "T" then
+            local val = data.v == true
+            if type(e.SetValue) == "function" then e:SetValue(val) elseif e.SetValue then e.SetValue(val) else e.Value = val end
+            if entry.cb then pcall(entry.cb, val) end
+            if data.c and e.ColorPicker then
+                local ok, col = pcall(function() return Color3.fromHex(data.c) end)
+                if ok and col then
+                    if type(e.ColorPicker.SetColor) == "function" then e.ColorPicker:SetColor(col) elseif e.ColorPicker.SetColor then e.ColorPicker.SetColor(col) else e.ColorPicker.Value = col end
+                    if entry.colorCb then pcall(entry.colorCb, col) end
+                end
+            end
+        elseif data.k == "S" then
+            local val = tonumber(data.v) or 0
+            if type(e.SetValue) == "function" then e:SetValue(val) elseif e.SetValue then e.SetValue(val) else e.Value = val end
+            if entry.cb then pcall(entry.cb, val) end
+        elseif data.k == "D" then
+            if data.v and data.v ~= "" then
+                if type(e.SetValue) == "function" then e:SetValue(data.v) elseif e.SetValue then e.SetValue(data.v) else e.Value = data.v end
+                if entry.cb then pcall(entry.cb, data.v) end
+            end
+        elseif data.k == "C" then
+            if data.c then
+                local ok, col = pcall(function() return Color3.fromHex(data.c) end)
+                if ok and col then
+                    if type(e.SetColor) == "function" then e:SetColor(col) elseif e.SetColor then e.SetColor(col) else e.Value = col end
+                    if entry.cb then pcall(entry.cb, col) end
+                end
+            end
+        elseif data.k == "K" then
+            if data.v and data.v ~= "" then
+                local ok, kc = pcall(function() return Enum.KeyCode[data.v] end)
+                if ok and kc then
+                    if type(e.SetKey) == "function" then pcall(function() e:SetKey(kc) end) elseif e.SetKey then pcall(e.SetKey, kc) end
+                    if data.m then
+                        if type(e.SetMode) == "function" then pcall(function() e:SetMode(data.m) end) elseif e.SetMode then pcall(e.SetMode, data.m) end
+                    end
+                end
+            end
+        end
+    end
+end
+
+local function cfgPath(name)   return CFG_SUB.."/"..name..".json" end
+
+local function listConfigs()
+    local out = {}
+    for _, f in ipairs(listfiles(CFG_SUB)) do
+        if f:sub(-5) == ".json" then
+            local n = f:match("[/\\]([^/\\]+)%.json$")
+            if n then table.insert(out, n) end
+        end
+    end
+    return out
+end
+
+local function saveConfig(name)
+    if not name or name:gsub(" ","") == "" then return false, "empty name" end
+    local ok, enc = pcall(HttpService.JSONEncode, HttpService, buildSnapshot())
+    if not ok then return false, "encode error" end
+    writefile(cfgPath(name), enc)
+    return true
+end
+
+local function loadConfig(name)
+    if not name then return false, "no name" end
+    if not isfile(cfgPath(name)) then return false, "not found" end
+    local ok, dec = pcall(HttpService.JSONDecode, HttpService, readfile(cfgPath(name)))
+    if not ok then return false, "decode error" end
+    applySnapshot(dec)
+    return true
+end
+
+local function deleteConfig(name)
+    if isfile(cfgPath(name)) then delfile(cfgPath(name)); return true end
+    return false
+end
+
+local function getAutoload()
+    local p = CFG_SUB.."/autoload.txt"
+    return isfile(p) and readfile(p) or nil
+end
+local function setAutoload(name)
+    writefile(CFG_SUB.."/autoload.txt", name or "")
+end
+
+task.spawn(function()
+    task.wait(1)
+    local auto = getAutoload()
+    if auto and auto ~= "" then
+        local ok = loadConfig(auto)
+        print(ok and ("[Config] Auto-loaded: "..auto) or "[Config] Auto-load failed")
+    end
+end)
+
+local CfgTab   = Window:AddTab("Config")
+local CfgLeft  = CfgTab:AddLeftGroupbox("Actions")
+local CfgRight = CfgTab:AddRightGroupbox("Configs")
+
+local _cfgList   = listConfigs()
+local _cfgSel    = nil
+local _cfgSelLbl = nil
+
+CfgRight:AddDropdown("CfgListDrop", {
+    Text     = "Select Config",
+    Values   = #_cfgList > 0 and _cfgList or {"(no configs yet)"},
+    Default  = 1,
+    Callback = function(v)
+        if v == "(no configs yet)" then _cfgSel = nil; return end
+        _cfgSel = v
+        if _cfgSelLbl then _cfgSelLbl.SetText("Selected: "..v) end
+    end,
+})
+
+_cfgSelLbl = CfgRight:AddLabel("Selected: none")
+
+CfgRight:AddButton("CfgRefreshBtn", {
+    Text = "Refresh List",
+    Callback = function()
+        _cfgList = listConfigs()
+        local names = table.concat(_cfgList, ", ")
+        print("[Config] "..#_cfgList.." config(s): "..(names ~= "" and names or "none"))
+        Window:Notify(#_cfgList.." config(s) found", 1, 3)
+    end,
+})
+
+local _autoLbl = CfgRight:AddLabel("Autoload: "..(getAutoload() or "none"))
+
+CfgLeft:AddButton("CfgSaveNewBtn", {
+    Text = "Save New Config",
+    Callback = function()
+        local name = "config_"..os.date("%m%d_%H%M%S")
+        local ok, err = saveConfig(name)
+        if ok then
+            _cfgList = listConfigs()
+            _cfgSel  = name
+            if _cfgSelLbl then _cfgSelLbl.SetText("Selected: "..name) end
+            print("[Config] Saved: "..name)
+            Window:Notify("Saved: "..name, 2, 3)
+        else
+            warn("[Config] "..tostring(err))
+            Window:Notify("Save failed: "..tostring(err), 3, 3)
+        end
+    end,
+})
+
+CfgLeft:AddButton("CfgLoadBtn", {
+    Text = "Load Selected",
+    Callback = function()
+        if not _cfgSel then Window:Notify("Select a config first", 4, 3); return end
+        local ok, err = loadConfig(_cfgSel)
+        if ok then
+            print("[Config] Loaded: ".._cfgSel)
+            Window:Notify("Loaded: ".._cfgSel, 2, 3)
+        else
+            warn("[Config] "..tostring(err))
+            Window:Notify("Load failed: "..tostring(err), 3, 3)
+        end
+    end,
+})
+
+CfgLeft:AddButton("CfgOverwriteBtn", {
+    Text = "Overwrite Selected",
+    Callback = function()
+        if not _cfgSel then Window:Notify("Select a config first", 4, 3); return end
+        local ok, err = saveConfig(_cfgSel)
+        if ok then
+            print("[Config] Overwritten: ".._cfgSel)
+            Window:Notify("Overwritten: ".._cfgSel, 2, 3)
+        else
+            warn("[Config] "..tostring(err))
+            Window:Notify("Overwrite failed: "..tostring(err), 3, 3)
+        end
+    end,
+})
+
+CfgLeft:AddButton("CfgDeleteBtn", {
+    Text = "Delete Selected",
+    Callback = function()
+        if not _cfgSel then Window:Notify("Select a config first", 4, 3); return end
+        deleteConfig(_cfgSel)
+        print("[Config] Deleted: ".._cfgSel)
+        Window:Notify("Deleted: ".._cfgSel, 3, 3)
+        _cfgSel  = nil
+        _cfgList = listConfigs()
+        if _cfgSelLbl then _cfgSelLbl.SetText("Selected: none") end
+    end,
+})
+
+CfgLeft:AddButton("CfgAutoloadBtn", {
+    Text = "Set as Autoload",
+    Callback = function()
+        if not _cfgSel then Window:Notify("Select a config first", 4, 3); return end
+        setAutoload(_cfgSel)
+        _autoLbl.SetText("Autoload: ".._cfgSel)
+        print("[Config] Autoload → ".._cfgSel)
+        Window:Notify("Autoload set: ".._cfgSel, 2, 3)
+    end,
+})
+
+CfgLeft:AddButton("CfgClearAutoBtn", {
+    Text = "Clear Autoload",
+    Callback = function()
+        setAutoload("")
+        _autoLbl.SetText("Autoload: none")
+        print("[Config] Autoload cleared")
+        Window:Notify("Autoload cleared", 1, 3)
+    end,
+})
