@@ -95,12 +95,16 @@ local PenView = {
 }
 
 -- ══════════════════════════════════════════════════════════════════════
--- POOLS & GLOBALS
+-- POOLS, CACHES & GLOBALS
 -- ══════════════════════════════════════════════════════════════════════
 local Boxes          = {}   
 local NameLabels     = {}   
 local AmmoLabels     = {}   
 local AmmoHighlights = {}   
+
+-- High-performance optimization caches
+local AmmoCache      = {} -- Caches recursive ammo model lookups
+local TeamColorCache = {} -- Faster team color reads
 
 local FovCircle = Draw.new("Circle")
 FovCircle.Visible = false
@@ -146,11 +150,11 @@ local function getPlayerName(chassisName)
     return chassisName:match("^Chassis(.+)$") or chassisName
 end
 
+-- OPTIMIZED: Avoids loops by indexing players directly via FindFirstChild[cite: 2]
 local function getTeamColor(playerName)
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p.Name == playerName and p.Team then
-            return p.Team.TeamColor.Color
-        end
+    local p = Players:FindFirstChild(playerName)
+    if p and p.Team then
+        return p.Team.TeamColor.Color
     end
     return nil
 end
@@ -166,13 +170,15 @@ local function collectAllAmmo(parent, results)
     return results
 end
 
+-- OPTIMIZED: Prioritizes direct lookups to avoid expensive GetAttributes loops[cite: 2]
 local function readAmmoAttribute(meshPart)
-    for _, name in ipairs({ "Ammo", "ammo", "AmmoCount", "Count", "Rounds" }) do
-        local v = meshPart:GetAttribute(name)
-        if v ~= nil then return tostring(v) end
-    end
-    for _, v in pairs(meshPart:GetAttributes()) do
-        if type(v) == "number" then return tostring(v) end
+    local v = meshPart:GetAttribute("Ammo") or meshPart:GetAttribute("ammo") or 
+              meshPart:GetAttribute("AmmoCount") or meshPart:GetAttribute("Count") or 
+              meshPart:GetAttribute("Rounds")
+    if v ~= nil then return tostring(v) end
+    
+    for _, val in pairs(meshPart:GetAttributes()) do
+        if type(val) == "number" then return tostring(val) end
     end
     return "?"
 end
@@ -433,10 +439,14 @@ local function hideAmmo(mp)
     if AmmoHighlights[mp] then AmmoHighlights[mp].Enabled = false end
 end
 
+-- OPTIMIZED: Clears stagnant lookup caches during the normal cleanup cycle[cite: 2]
 local function cleanupStaleChassis()
     local vehicles = workspace:FindFirstChild("Vehicles")
     for key in pairs(Boxes) do
         if not vehicles or not vehicles:FindFirstChild(key) then removeChassis(key) end
+    end
+    for chassis in pairs(AmmoCache) do
+        if not vehicles or not chassis:IsDescendantOf(vehicles) then AmmoCache[chassis] = nil end
     end
 end
 
@@ -486,7 +496,6 @@ RunService.RenderStepped:Connect(function()
 
     cleanupStaleChassis(); cleanupStaleAmmo()
 
-    -- Variables to manage Aimbot and Player Penetration Data
     local touchedAmmo = {}
     local bestTarget = nil
     local bestScore = math.huge
@@ -507,10 +516,17 @@ RunService.RenderStepped:Connect(function()
         end
 
         local rootPt = chassis:FindFirstChild("VehicleSeat") or chassis.PrimaryPart or chassis:FindFirstChildWhichIsA("BasePart")
-        local allAmmo = collectAllAmmo(chassis)
+        
+        -- OPTIMIZED: Grabs data straight from cache instead of looping :GetChildren recursive every single frame[cite: 2]
+        local allAmmo = AmmoCache[chassis]
+        if not allAmmo then
+            allAmmo = collectAllAmmo(chassis)
+            AmmoCache[chassis] = allAmmo
+        end
 
-        -- ── 1. Aimbot Logic (Ammo + Root + Penetration Check) ────────
-        if AimbotEnabled then
+        -- ── 1. Aimbot Logic ──────────────────────────────────────────
+        -- OPTIMIZED: Strict verification context wrapper prevents executing calculations/raycasts when key isn't held[cite: 2]
+        if AimbotEnabled and IsAiming then
             local potentialTargets = {}
             if AimTargetPart == "Both" or AimTargetPart == "Root" then
                 if rootPt then table.insert(potentialTargets, {part = rootPt, isAmmo = false}) end
@@ -528,13 +544,11 @@ RunService.RenderStepped:Connect(function()
                 if onScreen then
                     local dist = (Vector2.new(screenPos.X, screenPos.Y) - mouseLoc).Magnitude
                     if dist <= FovRadius then
-                        local score = dist -- Base score is distance to mouse
+                        local score = dist
                         local isPenetrable = false
 
-                        -- Ammo Priority Bonus
                         if tData.isAmmo then score = score - 1500 end 
 
-                        -- Calculate Penetration if enabled
                         if AimPrioritizePen and myGunBrick then
                             local origin = myGunBrick.Position
                             local dir = (pt.Position - origin).Unit
@@ -551,14 +565,13 @@ RunService.RenderStepped:Connect(function()
                                     isPenetrable = true
                                 end
                             else
-                                -- Hit nothing blocking it, or hit a direct weakpoint
                                 isPenetrable = true 
                             end
                             
                             if isPenetrable then
-                                score = score - 5000 -- Massive priority for penetrable parts
+                                score = score - 5000 
                             elseif AimStrictPen then
-                                continue -- Skip entirely if strict mode is on and it's heavily armored
+                                continue 
                             end
                         end
 
@@ -791,7 +804,6 @@ PenGrp:AddToggle("PenViewToggle", {
     Callback = function(v) Other.PenView = v; if v then PenView_Start() else PenView_Stop() end end
 })
 
--- ── TAB 5 — Visuals ───────────────────────────────────────────────────
 local WorldTab = Window:AddTab("Visuals")
 local WorldVis = WorldTab:AddLeftGroupbox("World")
 local LightVis = WorldTab:AddRightGroupbox("Lighting")
