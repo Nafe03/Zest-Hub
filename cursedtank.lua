@@ -1,5 +1,5 @@
 local UILibrary = loadstring(game:HttpGetAsync(
-    "https://raw.githubusercontent.com/Nafe03/Zest-Hub/refs/heads/main/ui4.lua"))()
+    "https://raw.githubusercontent.com/Nafe03/Zest-Hub/refs/heads/main/ui5.lua"))()
 
 local Draw = loadstring(game:HttpGetAsync(
     "https://raw.githubusercontent.com/Nafe03/Zest-Hub/refs/heads/main/drawlib.lua"))()
@@ -11,14 +11,11 @@ local Lighting         = game:GetService("Lighting")
 
 local LocalPlayer = Players.LocalPlayer
 
-
-
 local _reg = {}
 local function RegElem(id, kind, elem)
     _reg[id] = { elem = elem, kind = kind }
     return elem
 end
-
 
 local World = {
     RemoveGrass = false,
@@ -77,7 +74,7 @@ local AimPrioritizePen = true
 local AimStrictPen     = false
 
 local FovEnabled      = false
-local FovRadius       = 150
+local FovRadius       = 15
 local FovColor        = Color3.fromRGB(255, 255, 255)
 local FovThickness    = 1
 local FovTransparency = 1
@@ -114,8 +111,8 @@ local TeamColorCache = {}
 local FovCircle = Draw.new("Circle")
 FovCircle.Visible = false
 FovCircle.Filled = false
-FovCircle.NumSides = 64
 FovCircle.Thickness = FovThickness
+FovCircle.Radius = 15
 FovCircle.Color = FovColor
 FovCircle.Transparency = FovTransparency
 
@@ -870,41 +867,88 @@ local function applySnapshot(snap)
         local entry = _reg[id]
         if not entry then continue end
         local e = entry.elem
+        
         if data.k == "T" then
             local val = data.v == true
-            if type(e.SetValue) == "function" then e:SetValue(val) elseif e.SetValue then e.SetValue(val) else e.Value = val end
+            if type(e.SetValue) == "function" then 
+                pcall(function() e:SetValue(val) end) 
+            elseif e.SetValue then 
+                pcall(function() e.SetValue(val) end) 
+            else 
+                e.Value = val 
+            end
             if entry.cb then pcall(entry.cb, val) end
             if data.c and e.ColorPicker then
                 local ok, col = pcall(function() return Color3.fromHex(data.c) end)
                 if ok and col then
-                    if type(e.ColorPicker.SetColor) == "function" then e.ColorPicker:SetColor(col) elseif e.ColorPicker.SetColor then e.ColorPicker.SetColor(col) else e.ColorPicker.Value = col end
+                    if type(e.ColorPicker.SetColor) == "function" then 
+                        pcall(function() e.ColorPicker:SetColor(col) end) 
+                    elseif e.ColorPicker.SetColor then 
+                        pcall(function() e.ColorPicker.SetColor(col) end) 
+                    else 
+                        e.ColorPicker.Value = col 
+                    end
                     if entry.colorCb then pcall(entry.colorCb, col) end
                 end
             end
+            
         elseif data.k == "S" then
+            -- Double check we are passing a valid number to sliders
             local val = tonumber(data.v) or 0
-            if type(e.SetValue) == "function" then e:SetValue(val) elseif e.SetValue then e.SetValue(val) else e.Value = val end
+            if type(e.SetValue) == "function" then 
+                local ok, err = pcall(function() e:SetValue(val) end)
+                if not ok then
+                    warn("[Config Error] Failed to set slider '" .. tostring(id) .. "': " .. tostring(err))
+                end
+            elseif e.SetValue then 
+                pcall(function() e.SetValue(val) end) 
+            else 
+                e.Value = val 
+            end
             if entry.cb then pcall(entry.cb, val) end
+            
         elseif data.k == "D" then
             if data.v and data.v ~= "" then
-                if type(e.SetValue) == "function" then e:SetValue(data.v) elseif e.SetValue then e.SetValue(data.v) else e.Value = data.v end
+                if type(e.SetValue) == "function" then 
+                    pcall(function() e:SetValue(data.v) end) 
+                elseif e.SetValue then 
+                    pcall(function() e.SetValue(data.v) end) 
+                else 
+                    e.Value = data.v 
+                end
                 if entry.cb then pcall(entry.cb, data.v) end
             end
+            
         elseif data.k == "C" then
             if data.c then
                 local ok, col = pcall(function() return Color3.fromHex(data.c) end)
                 if ok and col then
-                    if type(e.SetColor) == "function" then e:SetColor(col) elseif e.SetColor then e.SetColor(col) else e.Value = col end
+                    if type(e.SetColor) == "function" then 
+                        pcall(function() e:SetColor(col) end) 
+                    elseif e.SetColor then 
+                        pcall(function() e.SetColor(col) end) 
+                    else 
+                        e.Value = col 
+                    end
                     if entry.cb then pcall(entry.cb, col) end
                 end
             end
+            
         elseif data.k == "K" then
             if data.v and data.v ~= "" then
                 local ok, kc = pcall(function() return Enum.KeyCode[data.v] end)
                 if ok and kc then
-                    if type(e.SetKey) == "function" then pcall(function() e:SetKey(kc) end) elseif e.SetKey then pcall(e.SetKey, kc) end
+                    if type(e.SetKey) == "function" then 
+                        pcall(function() e:SetKey(kc) end) 
+                    elseif e.SetKey then 
+                        pcall(function() e.SetKey(kc) end) 
+                    end
                     if data.m then
-                        if type(e.SetMode) == "function" then pcall(function() e:SetMode(data.m) end) elseif e.SetMode then pcall(e.SetMode, data.m) end
+                        if type(e.SetMode) == "function" then 
+                            pcall(function() e:SetMode(data.m) end) 
+                        elseif e.SetMode then 
+                            pcall(function() e.SetMode(data.m) end) 
+                        end
                     end
                 end
             end
