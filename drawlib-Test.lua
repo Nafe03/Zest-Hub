@@ -613,3 +613,5 @@ function Draw.Clear()
         child:Destroy()
     end
 end
+
+return Draw
