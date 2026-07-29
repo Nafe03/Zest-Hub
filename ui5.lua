@@ -629,7 +629,7 @@ function UILibrary.new(options)
         TabButton.BorderSizePixel    = 0
         TabButton.Size               = UDim2.new(1, 0, 0, 36)
         TabButton.Font               = Enum.Font.GothamSemibold
-        TabButton.Text               = name
+        TabButton.Text               = name or "Tab"
         TabButton.TextColor3         = options.TextColor
         TabButton.TextTransparency   = 0.5
         TabButton.TextSize           = 13
@@ -750,7 +750,7 @@ function UILibrary.new(options)
             local GroupboxContent = Instance.new("Frame")
             local GroupboxLayout  = Instance.new("UIListLayout")
 
-            GroupboxFrame.Name             = gName .. "Groupbox"
+            GroupboxFrame.Name             = (gName or "Groupbox") .. "Groupbox"
             GroupboxFrame.BackgroundColor3 = options.GroupboxColor
             GroupboxFrame.BorderSizePixel  = 0
             GroupboxFrame.Size             = UDim2.new(1, 0, 0, 0)
@@ -772,7 +772,7 @@ function UILibrary.new(options)
             GroupboxTitle.Position            = UDim2.new(0, 12, 0, 7)
             GroupboxTitle.Size                = UDim2.new(1, -24, 0, 20)
             GroupboxTitle.Font                = Enum.Font.GothamBold
-            GroupboxTitle.Text                = gName
+            GroupboxTitle.Text                = gName or "Groupbox"
             GroupboxTitle.TextColor3          = options.DefaultColor
             GroupboxTitle.TextSize            = 12
             GroupboxTitle.TextXAlignment      = Enum.TextXAlignment.Left
@@ -823,7 +823,7 @@ function UILibrary.new(options)
                 local CPFrame = Instance.new("Frame")
                 local CPText  = Instance.new("TextLabel")
 
-                CPFrame.Name               = id .. "ColorPicker"
+                CPFrame.Name               = (id or "ColorPicker") .. "ColorPicker"
                 CPFrame.Parent             = GroupboxContent
                 CPFrame.BackgroundTransparency = 1
                 CPFrame.Size               = UDim2.new(1, 0, 0, 22)
@@ -836,7 +836,7 @@ function UILibrary.new(options)
                 CPText.Position           = UDim2.new(0, 0, 0, 0)
                 CPText.Size               = UDim2.new(1, -28, 1, 0)
                 CPText.Font               = Enum.Font.Gotham
-                CPText.Text               = pickerOptions.Text or id
+                CPText.Text               = pickerOptions.Text or id or "Color Picker"
                 CPText.TextColor3         = pickerOptions.TextColor
                 CPText.TextSize           = 12
                 CPText.TextXAlignment     = Enum.TextXAlignment.Left
@@ -872,7 +872,7 @@ function UILibrary.new(options)
                 local ToggleCheckmark = Instance.new("TextLabel")
                 local ToggleText      = Instance.new("TextLabel")
 
-                ToggleFrame.Name               = id .. "Toggle"
+                ToggleFrame.Name               = (id or "Toggle") .. "Toggle"
                 ToggleFrame.Parent             = GroupboxContent
                 ToggleFrame.BackgroundTransparency = 1
                 ToggleFrame.Size               = UDim2.new(1, 0, 0, 22)
@@ -917,7 +917,7 @@ function UILibrary.new(options)
                 ToggleText.Position           = UDim2.new(0, 24, 0, 0)
                 ToggleText.Size               = UDim2.new(1, -(24 + extraRight), 1, 0)
                 ToggleText.Font               = Enum.Font.Gotham
-                ToggleText.Text               = toggleOptions.Text or id
+                ToggleText.Text               = toggleOptions.Text or id or "Toggle"
                 ToggleText.TextColor3         = toggleOptions.TextColor
                 ToggleText.TextSize           = 12
                 ToggleText.TextXAlignment     = Enum.TextXAlignment.Left
@@ -996,7 +996,7 @@ function UILibrary.new(options)
                 local SliderButton       = Instance.new("TextButton")
                 local ValueLabel         = Instance.new("TextLabel")
 
-                SliderFrame.Name               = id .. "Slider"
+                SliderFrame.Name               = (id or "Slider") .. "Slider"
                 SliderFrame.Parent             = GroupboxContent
                 SliderFrame.BackgroundTransparency = 1
                 SliderFrame.Size               = UDim2.new(1, 0, 0, 40)
@@ -1008,7 +1008,7 @@ function UILibrary.new(options)
                 SliderText.Position           = UDim2.new(0, 0, 0, 0)
                 SliderText.Size               = UDim2.new(1, -50, 0, 20)
                 SliderText.Font               = Enum.Font.Gotham
-                SliderText.Text               = sliderOptions.Text or id
+                SliderText.Text               = sliderOptions.Text or id or "Slider"
                 SliderText.TextColor3         = sliderOptions.TextColor
                 SliderText.TextSize           = 12
                 SliderText.TextXAlignment     = Enum.TextXAlignment.Left
@@ -1121,7 +1121,7 @@ function UILibrary.new(options)
                 local DropdownListLayout = Instance.new("UIListLayout")
                 local DropdownListCorner = Instance.new("UICorner")
 
-                DropdownFrame.Name               = id .. "Dropdown"
+                DropdownFrame.Name               = (id or "Dropdown") .. "Dropdown"
                 DropdownFrame.Parent             = GroupboxContent
                 DropdownFrame.BackgroundTransparency = 1
                 DropdownFrame.Size               = UDim2.new(1, 0, 0, 44)
@@ -1135,7 +1135,7 @@ function UILibrary.new(options)
                 DropdownText.Position           = UDim2.new(0, 0, 0, 0)
                 DropdownText.Size               = UDim2.new(1, 0, 0, 20)
                 DropdownText.Font               = Enum.Font.Gotham
-                DropdownText.Text               = dropOptions.Text or id
+                DropdownText.Text               = dropOptions.Text or id or "Dropdown"
                 DropdownText.TextColor3         = dropOptions.TextColor
                 DropdownText.TextSize           = 12
                 DropdownText.TextXAlignment     = Enum.TextXAlignment.Left
@@ -1250,7 +1250,7 @@ function UILibrary.new(options)
                         Opt.BorderSizePixel  = 0
                         Opt.Size             = UDim2.new(1, 0, 0, 20)
                         Opt.Font             = Enum.Font.Gotham
-                        Opt.Text             = "  " .. option
+                        Opt.Text             = "  " .. tostring(option)
                         Opt.TextColor3       = dropOptions.TextColor
                         Opt.TextSize         = 11
                         Opt.TextXAlignment   = Enum.TextXAlignment.Left
@@ -1264,7 +1264,7 @@ function UILibrary.new(options)
                         Opt.MouseLeave:Connect(function() smoothTween(Opt, {BackgroundColor3 = Color3.fromRGB(30, 30, 30)}) end)
                         Opt.MouseButton1Click:Connect(function()
                             selectedValue    = option
-                            DropdownButton.Text = "  " .. option
+                            DropdownButton.Text = "  " .. tostring(option)
                             setOpen(false)
                             if dropOptions.Callback then dropOptions.Callback(option) end
                         end)
@@ -1279,14 +1279,14 @@ function UILibrary.new(options)
                 local element = {
                     Type  = "Dropdown",
                     Frame = DropdownFrame,
-                    SetValue = function(_, v) selectedValue = v; DropdownButton.Text = "  " .. v end,
+                    SetValue = function(_, v) selectedValue = v; DropdownButton.Text = "  " .. tostring(v) end,
                     GetValue = function() return selectedValue end,
                     Close    = function() if isOpen then setOpen(false) end end,
                     Refresh  = function(_, newValues, keepSelected)
                         if newValues then dropOptions.Values = newValues end
                         if not keepSelected then
                             selectedValue = dropOptions.Values[1] or ""
-                            DropdownButton.Text = "  " .. selectedValue
+                            DropdownButton.Text = "  " .. tostring(selectedValue)
                         end
                         buildOptions()
                         self:UpdateSize()
@@ -1306,7 +1306,7 @@ function UILibrary.new(options)
                 local Button       = Instance.new("TextButton")
                 local ButtonCorner = Instance.new("UICorner")
 
-                ButtonFrame.Name               = id .. "Button"
+                ButtonFrame.Name               = (id or "Button") .. "Button"
                 ButtonFrame.Parent             = GroupboxContent
                 ButtonFrame.BackgroundTransparency = 1
                 ButtonFrame.Size               = UDim2.new(1, 0, 0, 28)
@@ -1319,7 +1319,7 @@ function UILibrary.new(options)
                 Button.Position         = UDim2.new(0, 0, 0, 0)
                 Button.Size             = UDim2.new(1, 0, 1, 0)
                 Button.Font             = Enum.Font.GothamSemibold
-                Button.Text             = btnOptions.Text or id
+                Button.Text             = btnOptions.Text or id or "Button"
                 Button.TextColor3       = btnOptions.TextColor
                 Button.TextSize         = 12
                 Button.AutoButtonColor  = false
@@ -1381,7 +1381,10 @@ function UILibrary.new(options)
 
                 local element = {
                     Type  = "Label", Frame = LabelFrame, Label = Label,
-                    SetText = function(_, newText) Label.Text = newText end,
+                    SetText = function(_, newText) 
+                        -- FIX: Prevent nil error by converting nil to empty string
+                        Label.Text = tostring(newText or "") 
+                    end,
                     SetColor = function(_, color) if element.ColorPicker then element.ColorPicker.SetColor(_, color) end end,
                     AddColorPicker = function(elementSelf, pickerId, pickerOpts)
                         pickerOpts = pickerOpts or {}
@@ -1406,7 +1409,7 @@ function UILibrary.new(options)
                 local TextBox       = Instance.new("TextBox")
                 local TextBoxCorner = Instance.new("UICorner")
 
-                TextBoxFrame.Name               = id .. "TextBox"
+                TextBoxFrame.Name               = (id or "TextBox") .. "TextBox"
                 TextBoxFrame.Parent             = GroupboxContent
                 TextBoxFrame.BackgroundTransparency = 1
                 TextBoxFrame.Size               = UDim2.new(1, 0, 0, 42)
@@ -1419,7 +1422,7 @@ function UILibrary.new(options)
                 TBLabel.Position           = UDim2.new(0, 0, 0, 0)
                 TBLabel.Size               = UDim2.new(1, 0, 0, 16)
                 TBLabel.Font               = Enum.Font.Gotham
-                TBLabel.Text               = tbOptions.Text or id
+                TBLabel.Text               = tbOptions.Text or id or "TextBox"
                 TBLabel.TextColor3         = tbOptions.TextColor
                 TBLabel.TextSize           = 12
                 TBLabel.TextXAlignment     = Enum.TextXAlignment.Left
@@ -1459,7 +1462,10 @@ function UILibrary.new(options)
 
                 local element = {
                     Type = "TextBox", Frame = TextBoxFrame,
-                    SetText = function(_, t) TextBox.Text = t end,
+                    SetText = function(_, t) 
+                        -- FIX: Prevent nil error by converting nil to empty string
+                        TextBox.Text = tostring(t or "") 
+                    end,
                     GetText = function() return TextBox.Text end,
                 }
                 table.insert(self.Elements, element)
@@ -1501,7 +1507,7 @@ function UILibrary.new(options)
                 local KPKeyLabel = Instance.new("TextLabel")
                 local KPModeLabel = Instance.new("TextLabel")
 
-                KPFrame.Name               = id .. "KeyPicker"
+                KPFrame.Name               = (id or "KeyPicker") .. "KeyPicker"
                 KPFrame.Parent             = GroupboxContent
                 KPFrame.BackgroundTransparency = 1
                 KPFrame.Size               = UDim2.new(1, 0, 0, 42)
@@ -1513,7 +1519,7 @@ function UILibrary.new(options)
                 KPText.Position           = UDim2.new(0, 0, 0, 0)
                 KPText.Size               = UDim2.new(1, -72, 0, 18)
                 KPText.Font               = Enum.Font.Gotham
-                KPText.Text               = kpOptions.Text or id
+                KPText.Text               = kpOptions.Text or id or "KeyPicker"
                 KPText.TextColor3         = kpOptions.TextColor
                 KPText.TextSize           = 12
                 KPText.TextXAlignment     = Enum.TextXAlignment.Left
