@@ -69,15 +69,36 @@ local function smoothTween(instance, properties, duration)
     return tween
 end
 
--- Parent a ScreenGui to CoreGui (exploit-safe, renders above game GUIs).
--- Falls back to PlayerGui if CoreGui is inaccessible.
+-- Parent a ScreenGui to the safest available container.
+-- 1. gethui() (Hidden from game anti-cheats, best method)
+-- 2. CoreGui (Renders above game GUIs, usually safe)
+-- 3. PlayerGui (Last resort, game can see/delete this)
 local function safeParentGui(gui, player)
-    local ok = pcall(function()
-        local cg = game:GetService("CoreGui")
-        gui.Parent = cg
-    end)
-    if not ok or not gui.Parent then
-        gui.Parent = player:WaitForChild("PlayerGui")
+    local parented = false
+    
+    -- 1. Try gethui() (Most secure)
+    if gethui then
+        local ok = pcall(function()
+            gui.Parent = gethui()
+        end)
+        if ok and gui.Parent then parented = true end
+    end
+    
+    -- 2. Try CoreGui
+    if not parented then
+        local ok = pcall(function()
+            local cg = game:GetService("CoreGui")
+            gui.Parent = cg
+        end)
+        if ok and gui.Parent then parented = true end
+    end
+    
+    -- 3. Fallback to PlayerGui
+    if not parented then
+        local ok = pcall(function()
+            gui.Parent = player:WaitForChild("PlayerGui")
+        end)
+        if ok and gui.Parent then parented = true end
     end
 end
 
@@ -129,6 +150,7 @@ local function createColorPickerIcon(iconParent, iconOffset, defaultColor, callb
     colorPickerScreenGui.ResetOnSpawn = false
     colorPickerScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
     colorPickerScreenGui.DisplayOrder = 10001
+    colorPickerScreenGui.IgnoreGuiInset = true
     safeParentGui(colorPickerScreenGui, player)
 
     local colorPickerWindow = Instance.new("Frame")
@@ -485,7 +507,7 @@ function UILibrary.new(options)
     ScreenGui.Name = options.Name
     ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
     ScreenGui.ResetOnSpawn = false
-    ScreenGui.IgnoreGuiInset = false
+    ScreenGui.IgnoreGuiInset = true
     ScreenGui.DisplayOrder = 10000
     safeParentGui(ScreenGui, player)
 
@@ -768,7 +790,6 @@ function UILibrary.new(options)
                         
                         -- Color picker icon(s) created after ToggleFrame exists (see below)
                         local hasColorPicker = options.HasColorPicker
-
 
                         ToggleFrame.Name = id .. "Toggle"
                         ToggleFrame.Parent = GroupboxContent
