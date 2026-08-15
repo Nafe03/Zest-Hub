@@ -10,6 +10,8 @@ local GuiService       = game:GetService("GuiService")
 -- Utility
 -- ================================================================
 
+local icon = ""
+
 local function HSVtoRGB(h, s, v)
     local i = math.floor(h * 6)
     local f = h * 6 - i
@@ -304,8 +306,8 @@ end
 local function makeColorIcon(parent, defaultColor)
     local icon = make("TextButton", {
         Parent = parent, BackgroundColor3 = defaultColor,
-        AnchorPoint = Vector2.new(1,0.5),
-        Position = UDim2.new(1,0,0.5,0),
+        AnchorPoint = Vector2.new(2, 0.5),
+        Position = UDim2.new(2,0,0.5,0),
         Size = UDim2.new(0,18,0,18),
         Text = "", AutoButtonColor = false,
         ZIndex = 2, BorderSizePixel = 0,
