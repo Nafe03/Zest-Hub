@@ -985,7 +985,7 @@ function UILibrary.new(options)
                         ValueLabel.Name = "Value"
                         ValueLabel.Parent = SliderFrame
                         ValueLabel.BackgroundTransparency = 1
-                        ValueLabel.Position = UDim2.new(1, -46, 0, 0)
+                        ValueLabel.Position = UDim2.new(1, -55, 0, 0)
                         ValueLabel.Size = UDim2.new(0, 44, 0, 20)
                         ValueLabel.Font = Enum.Font.GothamBold
                         ValueLabel.Text = tostring(options.Default or options.Min or 0)
