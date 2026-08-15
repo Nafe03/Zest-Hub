@@ -64,7 +64,7 @@ local function createColorPickerIcon(iconParent, iconOffset, defaultColor, callb
     ColorIcon.Parent = iconParent
     ColorIcon.BackgroundColor3 = defaultColor
     ColorIcon.AnchorPoint = Vector2.new(1, 0.5)
-    ColorIcon.Position = UDim2.new(1, iconOffset, 0.5, 0)
+    ColorIcon.Position = UDim2.new(1, 7, 0.5, 0)
     ColorIcon.Size = UDim2.new(0, 18, 0, 18)
     ColorIcon.Text = ""
     ColorIcon.AutoButtonColor = false
