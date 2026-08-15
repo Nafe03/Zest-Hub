@@ -1,4 +1,3 @@
-
 local UILibrary = {}
 
 local Players          = game:GetService("Players")
@@ -45,7 +44,6 @@ end
 local function safeParent(gui, player)
     if not pcall(function() gui.Parent = game:GetService("CoreGui") end) then
         gui.Parent = player:WaitForChild("PlayerGui")
-
         ProtectGui(gui)
     end
 end
@@ -232,7 +230,6 @@ local function buildColorPicker(id, defaultColor, iconBtn, onChange, overlayGui)
         if i.UserInputType == Enum.UserInputType.MouseButton1 then hueDrag=true; hueInput(i) end
     end)
 
-    -- FIX 1: store global UIS connections so they can be disconnected
     local moveConn = UserInputService.InputChanged:Connect(function(i)
         if i.UserInputType ~= Enum.UserInputType.MouseMovement then return end
         if svDrag then svInput(i) elseif hueDrag then hueInput(i) end
@@ -255,8 +252,6 @@ local function buildColorPicker(id, defaultColor, iconBtn, onChange, overlayGui)
         if inp.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
         if not win.Visible then return end
         local mp = UserInputService:GetMouseLocation()
-        local inset = GuiService:GetGuiInset()
-        mp = Vector2.new(mp.X, mp.Y - inset.Y)
         local wp, ws = win.AbsolutePosition, win.AbsoluteSize
         local onIcon = false
         if iconBtn then
@@ -271,14 +266,13 @@ local function buildColorPicker(id, defaultColor, iconBtn, onChange, overlayGui)
     if iconBtn then
         iconBtn.MouseButton1Click:Connect(function()
             if win.Visible then win.Visible = false; return end
-            local inset = GuiService:GetGuiInset()
             local vp = workspace.CurrentCamera.ViewportSize
             local ip, is = iconBtn.AbsolutePosition, iconBtn.AbsoluteSize
             local pw, ph = 252, 220
             local x = ip.X + is.X + 6
-            local y = ip.Y - inset.Y
+            local y = ip.Y
             if x + pw > vp.X - 8 then x = ip.X - pw - 6 end
-            if y + ph > vp.Y - inset.Y - 8 then y = vp.Y - inset.Y - ph - 8 end
+            if y + ph > vp.Y - 8 then y = vp.Y - ph - 8 end
             win.Position = UDim2.new(0, x, 0, math.max(4, y))
             win.Visible = true
         end)
@@ -292,7 +286,6 @@ local function buildColorPicker(id, defaultColor, iconBtn, onChange, overlayGui)
         GetColor = function() return currentColor end,
         Show     = function() win.Visible = true end,
         Hide     = function() win.Visible = false end,
-        -- FIX 1: disconnect ALL stored connections, not just closeConn
         Destroy  = function()
             if closeConn then closeConn:Disconnect() end
             if moveConn  then moveConn:Disconnect()  end
@@ -309,8 +302,8 @@ end
 local function makeColorIcon(parent, defaultColor)
     local icon = make("TextButton", {
         Parent = parent, BackgroundColor3 = defaultColor,
-        AnchorPoint = Vector2.new(2, 0.5),
-        Position = UDim2.new(2,0,0.5,0),
+        AnchorPoint = Vector2.new(1, 0.5),
+        Position = UDim2.new(1, -2, 0.5, 0),
         Size = UDim2.new(0,18,0,18),
         Text = "", AutoButtonColor = false,
         ZIndex = 2, BorderSizePixel = 0,
@@ -347,26 +340,21 @@ function UILibrary.new(options)
 
     local accent = options.DefaultColor
 
-    -- FIX 6: theme callback registry – populated by each element that uses accent
-    -- FIX 4: notification counter for deterministic LayoutOrder
     local themeCallbacks = {}
     local notifCount     = 0
 
-    -- Shared overlay (color pickers, dropdowns)
     local OverlayGui = make("ScreenGui", {
         Name = options.Name.."_Overlay", ZIndexBehavior = Enum.ZIndexBehavior.Global,
-        ResetOnSpawn = false, DisplayOrder = 10002,
+        ResetOnSpawn = false, DisplayOrder = 10002, IgnoreGuiInset = true,
     })
     safeParent(OverlayGui, player)
 
-    -- Main ScreenGui
     local ScreenGui = make("ScreenGui", {
         Name = options.Name, ZIndexBehavior = Enum.ZIndexBehavior.Global,
-        ResetOnSpawn = false, DisplayOrder = 10000,
+        ResetOnSpawn = false, DisplayOrder = 10000, IgnoreGuiInset = true,
     })
     safeParent(ScreenGui, player)
 
-    -- Root window
     local Root = make("Frame", {
         Name = "Root", Parent = ScreenGui,
         BackgroundColor3 = options.BackgroundColor,
@@ -384,7 +372,7 @@ function UILibrary.new(options)
         BackgroundColor3 = accent,
     })
     make("UICorner", {CornerRadius = UDim.new(0,9), Parent = accentBar})
-    make("UIGradient", {
+    local accentGradient = make("UIGradient", {
         Color = ColorSequence.new{
             ColorSequenceKeypoint.new(0,   accent),
             ColorSequenceKeypoint.new(0.5, Color3.fromRGB(
@@ -412,7 +400,6 @@ function UILibrary.new(options)
         Text = options.Name, TextColor3 = accent,
         TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 4,
     })
-    -- FIX 6: register title for theme updates
     table.insert(themeCallbacks, function(c)
         if titleLabel.Parent then titleLabel.TextColor3 = c end
     end)
@@ -454,7 +441,6 @@ function UILibrary.new(options)
         Size = UDim2.new(1,-140,1,-50),
     })
 
-    -- Watermark
     if options.Watermark then
         local wm = make("TextLabel", {
             Name = "Watermark", Parent = ScreenGui,
@@ -469,15 +455,11 @@ function UILibrary.new(options)
         })
         make("UICorner", {CornerRadius = UDim.new(0,6), Parent = wm})
         make("UIStroke", {Color = Color3.fromRGB(38,38,38), Thickness = 1, Parent = wm})
-        -- FIX 6: register watermark for theme updates
         table.insert(themeCallbacks, function(c)
             if wm.Parent then wm.TextColor3 = c end
         end)
     end
 
-    -- ============================================================
-    -- Notification system
-    -- ============================================================
     local notifHolder = make("Frame", {
         Name = "Notifications", Parent = OverlayGui,
         BackgroundTransparency = 1,
@@ -493,18 +475,12 @@ function UILibrary.new(options)
         Padding = UDim.new(0,5),
     })
 
-    -- ============================================================
-    -- Drag (header only)
-    -- ============================================================
     local dragging, dragOrigin, dragPos = false, nil, nil
     Header.InputBegan:Connect(function(inp)
         if inp.UserInputType == Enum.UserInputType.MouseButton1 then
             dragging   = true
             dragOrigin = inp.Position
             dragPos    = Root.Position
-            inp.Changed:Connect(function()
-                if inp.UserInputState == Enum.UserInputState.End then dragging = false end
-            end)
         end
     end)
     UserInputService.InputChanged:Connect(function(inp)
@@ -515,10 +491,12 @@ function UILibrary.new(options)
             Position = UDim2.new(dragPos.X.Scale, dragPos.X.Offset+d.X, dragPos.Y.Scale, dragPos.Y.Offset+d.Y)
         }, 0.06)
     end)
+    UserInputService.InputEnded:Connect(function(inp)
+        if inp.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
+    end)
 
-    -- ============================================================
-    -- Window object
-    -- ============================================================
     local tabs       = {}
     local currentTab = nil
     local Window     = {DefaultColor = accent, TextColor = options.TextColor}
@@ -528,9 +506,6 @@ function UILibrary.new(options)
         if inp.KeyCode == options.ToggleKey then Window:ToggleVisibility() end
     end)
 
-    -- ============================================================
-    -- Notify
-    -- ============================================================
     function Window:Notify(text, kind, duration)
         duration = duration or 3
         kind = kind or 1
@@ -543,7 +518,6 @@ function UILibrary.new(options)
         local icons = {[1]="ℹ",[2]="✓",[3]="✗",[4]="⚠"}
         local col   = colours[kind] or colours[1]
 
-        -- FIX 4: assign LayoutOrder so notifications stack deterministically
         notifCount = notifCount + 1
 
         local n = make("Frame", {
@@ -585,9 +559,6 @@ function UILibrary.new(options)
         end)
     end
 
-    -- ============================================================
-    -- AddTab
-    -- ============================================================
     function Window:AddTab(name)
         local tabCount = 0
         for _ in pairs(tabs) do tabCount = tabCount + 1 end
@@ -605,7 +576,6 @@ function UILibrary.new(options)
         make("UICorner",  {CornerRadius = UDim.new(0,6), Parent = TabBtn})
         make("UIPadding", {PaddingLeft = UDim.new(0,20), Parent = TabBtn})
 
-        -- FIX 5: use a fixed pixel offset instead of fragile -0.2 scale
         local Indicator = make("Frame", {
             Parent = TabBtn,
             BackgroundColor3 = accent, BorderSizePixel = 0,
@@ -614,7 +584,6 @@ function UILibrary.new(options)
             ZIndex = 2, Visible = false,
         })
         make("UICorner", {CornerRadius = UDim.new(1,0), Parent = Indicator})
-        -- FIX 6: register indicator for theme updates
         table.insert(themeCallbacks, function(c)
             if Indicator.Parent then Indicator.BackgroundColor3 = c end
         end)
@@ -631,7 +600,6 @@ function UILibrary.new(options)
             ScrollingDirection = Enum.ScrollingDirection.Y,
             Visible = false,
         })
-        -- FIX 6: register scroll bar for theme updates
         table.insert(themeCallbacks, function(c)
             if TabContent.Parent then TabContent.ScrollBarImageColor3 = c end
         end)
@@ -659,7 +627,6 @@ function UILibrary.new(options)
         function tab:AddLeftGroupbox(n)  return self:CreateGroupbox(n, "Left")  end
         function tab:AddRightGroupbox(n) return self:CreateGroupbox(n, "Right") end
 
-        -- FIX 7: tab Destroy – disconnects element UIS connections then destroys GUI
         function tab:Destroy()
             for _, gb in ipairs(self.Groupboxes) do
                 if gb.Destroy then gb:Destroy() end
@@ -668,9 +635,6 @@ function UILibrary.new(options)
             if TabBtn     and TabBtn.Parent     then TabBtn:Destroy()     end
         end
 
-        -- ----------------------------------------------------------
-        -- CreateGroupbox
-        -- ----------------------------------------------------------
         function tab:CreateGroupbox(gbName, side)
             local GBF = make("Frame", {
                 Name = gbName.."Groupbox",
@@ -693,7 +657,6 @@ function UILibrary.new(options)
                 Text = gbName, TextColor3 = accent,
                 TextXAlignment = Enum.TextXAlignment.Left,
             })
-            -- FIX 6: register groupbox title for theme updates
             table.insert(themeCallbacks, function(c)
                 if gbTitle.Parent then gbTitle.TextColor3 = c end
             end)
@@ -720,17 +683,12 @@ function UILibrary.new(options)
 
             local gb = {Frame=GBF, Content=GBC, Elements={}}
 
-            -- FIX 7: groupbox Destroy – disconnects element connections, GUI cleanup
-            --        handled by parent TabContent:Destroy() to avoid double-destroy
             function gb:Destroy()
                 for _, el in ipairs(self.Elements) do
                     if el.Destroy then el.Destroy() end
                 end
             end
 
-            -- --------------------------------------------------------
-            -- Toggle
-            -- --------------------------------------------------------
             function gb:AddToggle(id, opts)
                 opts = opts or {}
                 local col  = opts.DefaultColor or Window.DefaultColor
@@ -794,7 +752,6 @@ function UILibrary.new(options)
                 tbtn.MouseButton1Click:Connect(function() on = not on; refresh() end)
                 refresh()
 
-                -- FIX 6: only register theme callback when using the global accent
                 if not opts.DefaultColor then
                     table.insert(themeCallbacks, function(c)
                         if not TF.Parent then return end
@@ -814,10 +771,8 @@ function UILibrary.new(options)
 
                 local el = {
                     Type="Toggle", Frame=TF, ColorPicker=cp,
-                    -- Toggle's SetValue calls refresh() which already fires the callback
                     SetValue = function(v) on=v; refresh() end,
                     GetValue = function() return on end,
-                    -- FIX 7
                     Destroy  = function()
                         if cp then cp.Destroy() end
                         if TF and TF.Parent then TF:Destroy() end
@@ -827,9 +782,6 @@ function UILibrary.new(options)
                 return el
             end
 
-            -- --------------------------------------------------------
-            -- Slider
-            -- --------------------------------------------------------
             function gb:AddSlider(id, opts)
                 opts   = opts or {}
                 local col    = opts.DefaultColor or Window.DefaultColor
@@ -882,7 +834,6 @@ function UILibrary.new(options)
                 local val = math.clamp(opts.Default or mn, mn, mx)
                 local draggingSlider = false
 
-                -- FIX 3: guard against Min == Max to prevent div-by-zero / NaN
                 local function safeRange() return mx > mn and (mx - mn) or 1 end
 
                 local function applyVal(inp)
@@ -910,7 +861,6 @@ function UILibrary.new(options)
                     end
                 end)
 
-                -- FIX 1: store so we can disconnect on Destroy
                 local sliderMoveConn = UserInputService.InputChanged:Connect(function(i)
                     if draggingSlider and i.UserInputType == Enum.UserInputType.MouseMovement then
                         applyVal(i)
@@ -922,7 +872,6 @@ function UILibrary.new(options)
                 thumb.Position = UDim2.new(p0, 0, 0.5, 0)
                 VL.Text        = tostring(val)..suffix
 
-                -- FIX 6: theme update for accent-coloured instances
                 if not opts.DefaultColor then
                     table.insert(themeCallbacks, function(c)
                         if not SF.Parent then return end
@@ -940,11 +889,9 @@ function UILibrary.new(options)
                         tween(SFill, {Size=UDim2.new(p,0,1,0)}, 0.15)
                         tween(thumb, {Position=UDim2.new(p,0,0.5,0)}, 0.15)
                         VL.Text = tostring(val)..suffix
-                        -- FIX 2: fire callback on programmatic SetValue
                         if opts.Callback then opts.Callback(val) end
                     end,
                     GetValue = function() return val end,
-                    -- FIX 7
                     Destroy  = function()
                         sliderMoveConn:Disconnect()
                         if SF and SF.Parent then SF:Destroy() end
@@ -954,9 +901,6 @@ function UILibrary.new(options)
                 return el
             end
 
-            -- --------------------------------------------------------
-            -- Dropdown
-            -- --------------------------------------------------------
             function gb:AddDropdown(id, opts)
                 opts = opts or {}
                 local col  = opts.DefaultColor or Window.DefaultColor
@@ -998,7 +942,6 @@ function UILibrary.new(options)
                     Text="▾", TextColor3=col, ZIndex=3,
                 })
 
-                -- List lives in OverlayGui to avoid clipping
                 local DList = make("Frame", {
                     Name=id.."_List", Parent=OverlayGui,
                     BackgroundColor3=Color3.fromRGB(20,20,20), BorderSizePixel=0,
@@ -1039,10 +982,9 @@ function UILibrary.new(options)
                 for _,v in ipairs(opts.Values) do addOption(v) end
 
                 local function openList()
-                    local inset = GuiService:GetGuiInset()
                     local ap, as = DBtn.AbsolutePosition, DBtn.AbsoluteSize
                     local h = math.min(#opts.Values*21+10, 160)
-                    DList.Position = UDim2.new(0, ap.X, 0, ap.Y+as.Y+2-inset.Y)
+                    DList.Position = UDim2.new(0, ap.X, 0, ap.Y+as.Y+2)
                     DList.Size     = UDim2.new(0, as.X, 0, 0)
                     DList.Visible  = true
                     tween(DList, {Size=UDim2.new(0,as.X,0,h)}, 0.13)
@@ -1061,20 +1003,16 @@ function UILibrary.new(options)
                 DBtn.MouseEnter:Connect(function() tween(DBtn,{BackgroundColor3=Color3.fromRGB(28,28,28)}) end)
                 DBtn.MouseLeave:Connect(function() tween(DBtn,{BackgroundColor3=Color3.fromRGB(22,22,22)}) end)
 
-                -- FIX 1: store the outside-click connection for cleanup
                 local dropCloseConn = UserInputService.InputBegan:Connect(function(inp)
                     if inp.UserInputType ~= Enum.UserInputType.MouseButton1 or not isOpen then return end
                     local mp  = UserInputService:GetMouseLocation()
-                    local ins = GuiService:GetGuiInset()
-                    mp = Vector2.new(mp.X, mp.Y - ins.Y)
                     local lp, ls = DList.AbsolutePosition, DList.AbsoluteSize
                     local bp, bs = DBtn.AbsolutePosition,  DBtn.AbsoluteSize
                     local onL = mp.X>=lp.X and mp.X<=lp.X+ls.X and mp.Y>=lp.Y and mp.Y<=lp.Y+ls.Y
-                    local onB = mp.X>=bp.X and mp.X<=bp.X+bs.X and mp.Y>=(bp.Y-ins.Y) and mp.Y<=(bp.Y-ins.Y+bs.Y)
+                    local onB = mp.X>=bp.X and mp.X<=bp.X+bs.X and mp.Y>=bp.Y and mp.Y<=(bp.Y+bs.Y)
                     if not onL and not onB then isOpen=false; task.spawn(closeList) end
                 end)
 
-                -- FIX 6
                 if not opts.DefaultColor then
                     table.insert(themeCallbacks, function(c)
                         if not DF.Parent then return end
@@ -1086,12 +1024,10 @@ function UILibrary.new(options)
                 local el = {Type="Dropdown", Frame=DF,
                     SetValue = function(v)
                         selected=v; DSel.Text=v
-                        -- FIX 2: fire callback on programmatic SetValue
                         if opts.Callback then opts.Callback(v) end
                     end,
                     GetValue  = function() return selected end,
                     AddOption = function(_, v) addOption(v); table.insert(opts.Values, v) end,
-                    -- FIX 7
                     Destroy   = function()
                         dropCloseConn:Disconnect()
                         if DList and DList.Parent then DList:Destroy() end
@@ -1102,9 +1038,6 @@ function UILibrary.new(options)
                 return el
             end
 
-            -- --------------------------------------------------------
-            -- Button
-            -- --------------------------------------------------------
             function gb:AddButton(id, opts)
                 opts = opts or {}
                 local col  = opts.DefaultColor or Window.DefaultColor
@@ -1136,7 +1069,6 @@ function UILibrary.new(options)
                 B.MouseButton1Up:Connect(function()   tween(B,{BackgroundColor3=Color3.fromRGB(36,36,36)},0.1) end)
                 B.MouseButton1Click:Connect(function() if opts.Callback then opts.Callback() end end)
 
-                -- FIX 6
                 if not opts.DefaultColor then
                     table.insert(themeCallbacks, function(c)
                         if not BF.Parent then return end
@@ -1146,7 +1078,6 @@ function UILibrary.new(options)
 
                 local el = {Type="Button", Frame=BF, Button=B,
                     SetText = function(t) B.Text=t end,
-                    -- FIX 7
                     Destroy = function()
                         if BF and BF.Parent then BF:Destroy() end
                     end,
@@ -1155,9 +1086,6 @@ function UILibrary.new(options)
                 return el
             end
 
-            -- --------------------------------------------------------
-            -- Label  (supports inline AddColorPicker)
-            -- --------------------------------------------------------
             function gb:AddLabel(text, opts)
                 opts = opts or {}
                 local tcol = opts.TextColor or Window.TextColor
@@ -1176,7 +1104,6 @@ function UILibrary.new(options)
 
                 local el = {Type="Label", Frame=LF, Label=Lbl,
                     SetText = function(t) Lbl.Text=t end,
-                    -- FIX 7: checks for attached color picker before destroy
                     Destroy = function()
                         if el.ColorPicker then el.ColorPicker.Destroy() end
                         if LF and LF.Parent then LF:Destroy() end
@@ -1196,9 +1123,6 @@ function UILibrary.new(options)
                 return el
             end
 
-            -- --------------------------------------------------------
-            -- TextBox
-            -- --------------------------------------------------------
             function gb:AddTextBox(id, opts)
                 opts = opts or {}
                 local col  = opts.DefaultColor or Window.DefaultColor
@@ -1235,7 +1159,6 @@ function UILibrary.new(options)
                     if opts.Callback then opts.Callback(TB.Text) end
                 end)
 
-                -- FIX 6
                 if not opts.DefaultColor then
                     table.insert(themeCallbacks, function(c)
                         if not TBF.Parent then return end
@@ -1246,7 +1169,6 @@ function UILibrary.new(options)
                 local el = {Type="TextBox", Frame=TBF,
                     SetText = function(t) TB.Text=t end,
                     GetText = function() return TB.Text end,
-                    -- FIX 7
                     Destroy = function()
                         if TBF and TBF.Parent then TBF:Destroy() end
                     end,
@@ -1255,9 +1177,6 @@ function UILibrary.new(options)
                 return el
             end
 
-            -- --------------------------------------------------------
-            -- KeyPicker
-            -- --------------------------------------------------------
             function gb:AddKeyPicker(id, opts)
                 opts = opts or {}
                 local col  = opts.DefaultColor or Window.DefaultColor
@@ -1333,7 +1252,6 @@ function UILibrary.new(options)
                         if i.UserInputType == Enum.UserInputType.Keyboard then
                             if i.KeyCode == Enum.KeyCode.Escape then stopListen(); return end
                             curKey = i.KeyCode; stopListen()
-                            -- FIX 8: clean up before rebinding
                             if dConn then dConn:Disconnect(); dConn=nil end
                             if uConn then uConn:Disconnect(); uConn=nil end
                             bind()
@@ -1341,7 +1259,6 @@ function UILibrary.new(options)
                     end)
                 end
 
-                -- FIX 8: always clean up old connections before creating new ones
                 bind = function()
                     if dConn then dConn:Disconnect(); dConn=nil end
                     if uConn then uConn:Disconnect(); uConn=nil end
@@ -1388,7 +1305,6 @@ function UILibrary.new(options)
                     if not listening then tween(KBtn,{BackgroundColor3=Color3.fromRGB(22,22,22)},0.12) end
                 end)
 
-                -- FIX 6
                 if not opts.DefaultColor then
                     table.insert(themeCallbacks, function(c)
                         if not KF.Parent then return end
@@ -1410,7 +1326,6 @@ function UILibrary.new(options)
                         mode=modes[modeI]; MLbl.Text="Mode: "..mode
                         isActive=false; bind()
                     end,
-                    -- FIX 7
                     Destroy  = function()
                         if dConn then dConn:Disconnect() end
                         if uConn then uConn:Disconnect() end
@@ -1422,9 +1337,6 @@ function UILibrary.new(options)
                 return el
             end
 
-            -- --------------------------------------------------------
-            -- Standalone ColorPicker
-            -- --------------------------------------------------------
             function gb:AddColorPicker(id, opts)
                 opts = opts or {}
                 local col  = opts.Default or opts.DefaultColor or Window.DefaultColor
@@ -1446,7 +1358,6 @@ function UILibrary.new(options)
                 local el = {Type="ColorPicker", Frame=CPF, ColorPicker=cp,
                     SetColor = cp.SetColor,
                     GetColor = cp.GetColor,
-                    -- FIX 7
                     Destroy  = function()
                         cp.Destroy()
                         if CPF and CPF.Parent then CPF:Destroy() end
@@ -1458,9 +1369,8 @@ function UILibrary.new(options)
 
             table.insert(self.Groupboxes, gb)
             return gb
-        end -- CreateGroupbox
+        end
 
-        -- Tab button interactions
         TabBtn.MouseButton1Click:Connect(function()
             for _,t in pairs(tabs) do
                 t.Content.Visible  = false
@@ -1481,7 +1391,6 @@ function UILibrary.new(options)
 
         tabs[name] = tab
 
-        -- Auto-select first tab
         if not currentTab then
             TabContent.Visible  = true
             Indicator.Visible   = true
@@ -1491,11 +1400,7 @@ function UILibrary.new(options)
         end
 
         return tab
-    end -- AddTab
-
-    -- ============================================================
-    -- Window methods
-    -- ============================================================
+    end
 
     function Window:ToggleVisibility()
         if ScreenGui.Enabled then
@@ -1511,8 +1416,6 @@ function UILibrary.new(options)
         end
     end
 
-    -- FIX 7: Destroy walks the full tab → groupbox → element chain to
-    --        disconnect all UserInputService connections before nuking the GUIs
     function Window:Destroy()
         for _, t in pairs(tabs) do
             if t.Destroy then t:Destroy() end
@@ -1525,10 +1428,18 @@ function UILibrary.new(options)
         end)
     end
 
-    -- FIX 6: SetThemeColor now propagates to every registered element
     function Window:SetThemeColor(color)
         Window.DefaultColor = color; accent = color
         accentBar.BackgroundColor3 = color
+        accentGradient.Color = ColorSequence.new{
+            ColorSequenceKeypoint.new(0,   color),
+            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(
+                math.min(255, color.R*255+50),
+                math.min(255, color.G*255+30),
+                math.min(255, color.B*255+50)
+            )),
+            ColorSequenceKeypoint.new(1,   color),
+        }
         for _, fn in ipairs(themeCallbacks) do
             pcall(fn, color)
         end
