@@ -493,6 +493,7 @@ function UILibrary.new(options)
         TabButton.Parent = TabHolder
         TabButton.BackgroundTransparency = 1
         TabButton.BorderSizePixel = 0
+        TabButton.BackGroundColor = Color3.fromRGB(27, 42, 53)
         TabButton.Size = UDim2.new(1, 0, 0, 36)
         TabButton.Font = Enum.Font.GothamSemibold
         TabButton.Text = name
@@ -1339,11 +1340,11 @@ function UILibrary.new(options)
             for _, tabData in pairs(tabs) do
                 tabData.Content.Visible = false
                 tabData.Highlight.Visible = false
-                smoothTween(tabData.Button, {TextTransparency = 0.5})
+                smoothTween(tabData.Button, {TextTransparency = 0.5, BackgroundTransparency = 1})
             end
             TabContent.Visible = true
             TabHighlight.Visible = true
-            smoothTween(TabButton, {TextTransparency = 0}, 0.2)
+            smoothTween(TabButton, {TextTransparency = 0, BackgroundTransparency = 0}, 0.2)
             currentTab = tab
             Window.ActiveTab = tab
         end)
