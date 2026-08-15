@@ -1,10 +1,19 @@
 local UILibrary = {}
 
-local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
-local RunService = game:GetService("RunService")
-local TextService = game:GetService("TextService")
+if not LPH_OBFUSCATED then
+	getfenv().LPH_NO_VIRTUALIZE = function(...) return ... end
+	getfenv().LPH_NO_UPVALUES = function(...) return ... end
+	getfenv().LPH_JIT_MAX = function(...) return ... end
+	getfenv().LPH_ENCSTR = function(...) return ... end
+	getfenv().LPH_JIT = function(...) return ... end
+end
+
+
+local Players = cloneref(game:GetService("Players"))
+local UserInputService = cloneref(game:GetService("UserInputService"))
+local TweenService = cloneref(game:GetService("TweenService"))
+local RunService = cloneref(game:GetService("RunService"))
+local TextService = cloneref(game:GetService("TextService"))
 
 -- Color conversion functions
 local function HSVtoRGB(h, s, v)
@@ -73,11 +82,11 @@ end
 -- Falls back to PlayerGui if CoreGui is inaccessible.
 local function safeParentGui(gui, player)
     local ok = pcall(function()
-        local cg = game:GetService("CoreGui")
+        local cg = cloneref(game:GetService("CoreGui"))
         gui.Parent = cg
     end)
     if not ok or not gui.Parent then
-        gui.Parent = player:WaitForChild("PlayerGui")
+        gui.Parent = cloneref(player:WaitForChild("PlayerGui"))
     end
 end
 
