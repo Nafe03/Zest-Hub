@@ -64,7 +64,7 @@ local function createColorPickerIcon(iconParent, iconOffset, defaultColor, callb
     ColorIcon.Parent = iconParent
     ColorIcon.BackgroundColor3 = defaultColor
     ColorIcon.AnchorPoint = Vector2.new(1, 0.5)
-    ColorIcon.Position = UDim2.new(1, iconOffset, 0.5, 0)
+    ColorIcon.Position = UDim2.new(1, 7, 0.5, 0)
     ColorIcon.Size = UDim2.new(0, 18, 0, 18)
     ColorIcon.Text = ""
     ColorIcon.AutoButtonColor = false
@@ -493,6 +493,7 @@ function UILibrary.new(options)
         TabButton.Parent = TabHolder
         TabButton.BackgroundTransparency = 1
         TabButton.BorderSizePixel = 0
+        TabButton.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
         TabButton.Size = UDim2.new(1, 0, 0, 36)
         TabButton.Font = Enum.Font.GothamSemibold
         TabButton.Text = name
@@ -720,7 +721,7 @@ function UILibrary.new(options)
                             AddColorPickerIcon = function(_, pickerId, pickerOptions)
                                 pickerOptions = pickerOptions or {}
                                 local picker = createColorPickerIcon(ToggleFrame, nextIconOffset, pickerOptions.Default or Window.DefaultColor, pickerOptions.Callback, player, id .. "_" .. (pickerId or tostring(#extraColorPickers + 1)), themeCallbacks)
-                                nextIconOffset = nextIconOffset - 24
+                                nextIconOffset = nextIconOffset - 34
                                 table.insert(extraColorPickers, picker)
                                 return picker
                             end,
@@ -744,7 +745,7 @@ function UILibrary.new(options)
                         SliderFrame.Name = id .. "Slider"
                         SliderFrame.Parent = GroupboxContent
                         SliderFrame.BackgroundTransparency = 1
-                        SliderFrame.Size = UDim2.new(1, 0, 0, 40)
+                        SliderFrame.Size = UDim2.new(1.3, 0, 0, 40)
                         SliderFrame.LayoutOrder = #self.Elements + 1
 
                         SliderText.Parent = SliderFrame
@@ -780,7 +781,7 @@ function UILibrary.new(options)
 
                         ValueLabel.Parent = SliderFrame
                         ValueLabel.BackgroundTransparency = 1
-                        ValueLabel.Position = UDim2.new(1, -46, 0, 0)
+                        ValueLabel.Position = UDim2.new(0.58, 0, 0, 0)
                         ValueLabel.Size = UDim2.new(0, 44, 0, 20)
                         ValueLabel.Font = Enum.Font.GothamBold
                         ValueLabel.Text = tostring(opts.Default or opts.Min or 0)
