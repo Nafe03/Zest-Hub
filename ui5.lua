@@ -672,7 +672,7 @@ function UILibrary.new(options)
                         local toggled = opts.Default or false
                         local function updateToggle()
                             if toggled then
-                                smoothTween(ToggleIndicator, {BackgroundColor3 = Color3.fromRGB(45, 45, 45)})
+                                smoothTween(ToggleIndicator, {BackgroundColor3 = opts.DefaultColor})
                                 smoothTween(TIStroke, {Color = opts.DefaultColor})
                                 smoothTween(ToggleCheckmark, {TextTransparency = 0})
                             else
@@ -1339,11 +1339,11 @@ function UILibrary.new(options)
             for _, tabData in pairs(tabs) do
                 tabData.Content.Visible = false
                 tabData.Highlight.Visible = false
-                smoothTween(tabData.Button, {TextTransparency = 0.5, BackgroundTransparency = 1})
+                smoothTween(tabData.Button, {TextTransparency = 0.5})
             end
             TabContent.Visible = true
             TabHighlight.Visible = true
-            smoothTween(TabButton, {TextTransparency = 0, BackgroundTransparency = 0}, 0.2)
+            smoothTween(TabButton, {TextTransparency = 0}, 0.2)
             currentTab = tab
             Window.ActiveTab = tab
         end)
