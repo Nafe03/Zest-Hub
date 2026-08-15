@@ -5,6 +5,7 @@ local Players          = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local TweenService     = game:GetService("TweenService")
 local GuiService       = game:GetService("GuiService")
+local ProtectGui = protectgui or (syn and syn.protect_gui) or (function() end);
 
 -- ================================================================
 -- Utility
@@ -44,6 +45,8 @@ end
 local function safeParent(gui, player)
     if not pcall(function() gui.Parent = game:GetService("CoreGui") end) then
         gui.Parent = player:WaitForChild("PlayerGui")
+
+        ProtectGui(gui)
     end
 end
 
