@@ -672,7 +672,7 @@ function UILibrary.new(options)
                         local toggled = opts.Default or false
                         local function updateToggle()
                             if toggled then
-                                smoothTween(ToggleIndicator, {BackgroundColor3 = opts.DefaultColor})
+                                smoothTween(ToggleIndicator, {BackgroundColor3 = Color3.fromRGB(45, 45, 45)})
                                 smoothTween(TIStroke, {Color = opts.DefaultColor})
                                 smoothTween(ToggleCheckmark, {TextTransparency = 0})
                             else
