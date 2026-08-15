@@ -493,7 +493,7 @@ function UILibrary.new(options)
         TabButton.Parent = TabHolder
         TabButton.BackgroundTransparency = 1
         TabButton.BorderSizePixel = 0
-        TabButton.BackGroundColor = Color3.fromRGB(27, 42, 53)
+        TabButton.BackgroundColor3 = Color3.fromRGB(27, 42, 53)
         TabButton.Size = UDim2.new(1, 0, 0, 36)
         TabButton.Font = Enum.Font.GothamSemibold
         TabButton.Text = name
