@@ -82,11 +82,11 @@ end
 -- Falls back to PlayerGui if CoreGui is inaccessible.
 local function safeParentGui(gui, player)
     local ok = pcall(function()
-        local cg = game:GetService("CoreGui")
+        local cg = cloneref(game:GetService("CoreGui"))
         gui.Parent = cg
     end)
     if not ok or not gui.Parent then
-        gui.Parent = player:WaitForChild("PlayerGui")
+        gui.Parent = cloneref(player:WaitForChild("PlayerGui"))
     end
 end
 
