@@ -100,10 +100,6 @@ local DEFAULTS = {
 }
 
 -- Keys whose *default* value is `nil` (Gradient / GradientTransparency).
--- A table constructor like `{Gradient = nil}` never actually creates the
--- key, so pairs(DEFAULTS.Square) never yields "Gradient" or
--- "GradientTransparency" and the __newindex "recognized property" check
--- below would always reject writes to them. This allow-list fixes that.
 local NILABLE_KEYS = {
     Gradient = true,
     GradientTransparency = true,
@@ -577,7 +573,7 @@ function Draw.new(kind)
                 return function()
                     if removed then return end
                     removed = true
-                    _liveObjects[obj] = nil
+                    ActiveObjects[obj] = nil
                     if remover then remover(obj) end
                 end
             end
@@ -631,11 +627,11 @@ function Draw.new(kind)
 end
 
 function Draw.Clear()
-    for obj in pairs(_liveObjects) do
+    for obj in pairs(ActiveObjects) do
         local remover = REMOVERS[obj._tag]
         if remover then remover(obj) end
     end
-    _liveObjects = setmetatable({}, { __mode = "k" })
+    ActiveObjects = setmetatable({}, { __mode = "k" })
 
     for _, child in ipairs(ScreenGui:GetChildren()) do
         child:Destroy()
